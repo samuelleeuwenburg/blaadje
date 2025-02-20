@@ -1,13 +1,17 @@
 mod blaadje;
 
-use blaadje::{eval, parse};
+use blaadje::{parse, run_program};
 
 fn main() {
-    let prog = "(+ 8 (+ 10 2))";
-    let ast = parse(prog);
-    let result = eval(&ast);
+    let code = "
+        (let x 10)
+        (+ 2 x)
+    ";
 
-    println!("program: \t{:?}", prog);
-    println!("ast: \t\t{:?}", ast);
+    let program = parse(code).unwrap();
+    let result = run_program(&program).unwrap();
+
+    println!("code: \t{:?}", code);
+    println!("program: \t\t{:?}", program);
     println!("result: \t{:?}", result);
 }
