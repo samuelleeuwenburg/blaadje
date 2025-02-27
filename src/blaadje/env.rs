@@ -22,6 +22,10 @@ impl Environment {
         }
     }
 
+    pub fn set_parent(&mut self, env: &Environment) {
+        self.parent = Some(env.clone().into());
+    }
+
     pub fn set(&mut self, key: &str, value: Blad) -> Result<(), BladError> {
         if self.values.get(key).is_some() {
             return Err(BladError::AttemptToRedefineVariable);

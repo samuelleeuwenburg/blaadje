@@ -4,6 +4,7 @@
 mod env;
 mod eval;
 mod parse;
+mod prelude;
 
 pub use env::Environment;
 pub use eval::{eval, run_program};
@@ -11,6 +12,7 @@ pub use parse::parse;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Blad {
+    Unit,
     List(Vec<Blad>),
     Literal(Literal),
     Symbol(String),
@@ -28,23 +30,36 @@ pub enum Literal {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Keyword {
-    Let,
     Add,
-    List,
+    Do,
+    Head,
+    If,
     Lambda,
+    Let,
+    List,
+    Subtract,
+    Tail,
+    Equal,
+    GreaterThan,
+    LessThan,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BladError {
-    UnexpectedToken(String),
-    ExpectedSymbol,
-    InvalidToken(String),
-    UnsupportedNumericType(String),
-    UndefinedSymbol,
-    UndefinedOperator,
-    ExpectedProcedure,
-    ExpectedList,
-    IncorrectLambdaSyntax,
-    WrongNumberOfArguments,
     AttemptToRedefineVariable,
+    ExpectedBoolean,
+    ExpectedF32,
+    ExpectedList,
+    ExpectedNumber,
+    ExpectedProcedure,
+    ExpectedSymbol,
+    ExpectedUsize,
+    ExpectedSameTypes,
+    IncorrectLambdaSyntax,
+    InvalidToken(String),
+    UndefinedOperator,
+    UndefinedSymbol,
+    UnexpectedToken(String),
+    UnsupportedNumericType(String),
+    WrongNumberOfArguments,
 }

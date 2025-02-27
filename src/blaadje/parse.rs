@@ -45,7 +45,11 @@ fn parse_tokens<S: AsRef<str>>(tokens: &[S]) -> Result<(Blad, usize), BladError>
             // Skip the closing `)`
             index += 1;
 
-            Ok((Blad::List(blaadjes), index))
+            if blaadjes.is_empty() {
+                Ok((Blad::Unit, index))
+            } else {
+                Ok((Blad::List(blaadjes), index))
+            }
         }
         ")" => Err(BladError::UnexpectedToken(")".into())),
         "'" => {
