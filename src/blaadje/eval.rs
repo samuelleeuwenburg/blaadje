@@ -38,7 +38,7 @@ pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladE
             "do" => Ok(Blad::Keyword(Keyword::Do)),
             "head" => Ok(Blad::Keyword(Keyword::Head)),
             "if" => Ok(Blad::Keyword(Keyword::If)),
-            "lambda" => Ok(Blad::Keyword(Keyword::Lambda)),
+            "fn" => Ok(Blad::Keyword(Keyword::Lambda)),
             "let" => Ok(Blad::Keyword(Keyword::Let)),
             "list" => Ok(Blad::Keyword(Keyword::List)),
             "tail" => Ok(Blad::Keyword(Keyword::Tail)),
@@ -352,7 +352,7 @@ mod tests {
     fn test_lambda_identity() {
         let program = parse(
             "
-            (let identity (lambda (x) x))
+            (let identity (fn (x) x))
             (identity 10)
         ",
         )
@@ -368,7 +368,7 @@ mod tests {
     fn test_lambda_recursion() {
         let program = parse(
             "
-            (let r (lambda (x y)
+            (let r (fn (x y)
                 (if (>= x 10)
                     y
                     (r (+ x 1) (+ y 1))
@@ -389,7 +389,7 @@ mod tests {
     fn test_lambda_currying() {
         let program = parse(
             "
-            (let adder (lambda (x) (lambda (y) (+ x y))))
+            (let adder (fn (x) (fn (y) (+ x y))))
             (let add_five (adder 5))
             (add_five 2)
         ",
@@ -407,7 +407,7 @@ mod tests {
         let program = parse(
             "
             (let summer
-                (lambda (a b c d) (+ a b c d)))
+                (fn (a b c d) (+ a b c d)))
 
             (summer 1 2 3 4)
         ",

@@ -6,23 +6,18 @@ const PRELUDE: &'static str = "
     (let false 0)
     (let true 1)
 
-    (let or (lambda (a b)
-        (if a a b)))
+    (let or (fn (a b) (if a a b)))
 
-    (let and (lambda (a b)
-        (if a b a)))
+    (let and (fn (a b) (if a b a)))
 
-    (let <= (lambda (a b)
-        (or (< a b) (= a b))))
+    (let <= (fn (a b) (or (< a b) (= a b))))
 
-    (let >= (lambda (a b)
-        (or (> a b) (= a b))))
+    (let >= (fn (a b) (or (> a b) (= a b))))
 
-    (let empty?
-        (lambda (l) (if (head l) false true)))
+    (let empty? (fn (l) (if (head l) false true)))
 
-    (let length (lambda (l) (do
-        (let r (lambda (l i)
+    (let length (fn (l) (do
+        (let r (fn (l i)
             (if (empty? l) i (r (tail l) (+ i 1)))
         ))
 
