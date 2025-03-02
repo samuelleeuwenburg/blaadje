@@ -1,25 +1,34 @@
 use super::prelude::prelude_environment;
 use super::{Blad, BladError, Environment, Keyword, Literal};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub fn run_program(program: &[Blad]) -> Result<Blad, BladError> {
-    let mut env = prelude_environment();
-
-    println!("=======================================");
-    println!("end of prelude run program:");
+    let env = prelude_environment();
 
     for i in 0..program.len() - 1 {
-        eval(&program[i], &mut env)?;
+        eval(&program[i], env.clone())?;
     }
 
-    eval(program.last().unwrap(), &mut env)
+    eval(program.last().unwrap(), env.clone())
 }
 
-pub fn eval(program: &Blad, env: &mut Environment) -> Result<Blad, BladError> {
-    println!("eval> {:?}", program);
-
+pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
     match program {
-        Blad::Unit => Ok(Blad::Unit),
-        Blad::Literal(value) => Ok(Blad::Literal(value.clone())),
+        Blad::Unit => Ok(program.clone()),
+        Blad::Literal(_) => Ok(program.clone()),
+        Blad::Quote(blad) => Ok(*blad.clone()),
+        Blad::List(list) => {
+            if list.is_empty() {
+                Ok(Blad::Unit)
+            } else {
+                process_operator(list, env.clone())
+            }
+        }
+        Blad::Lambda(closure, params, body) => {
+            Ok(Blad::Lambda(closure.clone(), params.clone(), body.clone()))
+        }
+        Blad::Keyword(string) => Ok(Blad::Keyword(string.clone())),
         Blad::Symbol(string) => match string.as_str() {
             "+" => Ok(Blad::Keyword(Keyword::Add)),
             "-" => Ok(Blad::Keyword(Keyword::Subtract)),
@@ -33,36 +42,20 @@ pub fn eval(program: &Blad, env: &mut Environment) -> Result<Blad, BladError> {
             "let" => Ok(Blad::Keyword(Keyword::Let)),
             "list" => Ok(Blad::Keyword(Keyword::List)),
             "tail" => Ok(Blad::Keyword(Keyword::Tail)),
-            _ => env.get(string).cloned().ok_or(BladError::UndefinedSymbol),
+            _ => env.borrow().get(string).ok_or(BladError::UndefinedSymbol),
         },
-        Blad::List(list) => {
-            if list.is_empty() {
-                Ok(Blad::Unit)
-            } else {
-                process_operator(list, env)
-            }
-        }
-        Blad::Quote(blad) => Ok(*blad.clone()),
-        Blad::Lambda(closure, params, body) => {
-            Ok(Blad::Lambda(closure.clone(), params.clone(), body.clone()))
-        }
-        Blad::Keyword(string) => Ok(Blad::Keyword(string.clone())),
     }
 }
 
-pub fn process_operator(list: &[Blad], env: &mut Environment) -> Result<Blad, BladError> {
-    let operator = eval(list.get(0).unwrap(), env)?;
-
-    println!("    > process_operator> {:?} {:?}", operator, list);
+pub fn process_operator(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    let operator = eval(list.get(0).unwrap(), env.clone())?;
 
     match operator {
         Blad::Keyword(Keyword::Let) => match (&list[1], &list[2]) {
             (Blad::Symbol(key), value) => {
-                let mut e = Environment::child_from(env);
-                let result = eval(value, &mut e)?;
-                println!("set:: {} -> {:?}", key, result);
-                env.set(key, result)?;
-                Ok(Blad::List(vec![]))
+                let result = eval(value, env.clone())?;
+                env.borrow_mut().set(key, result)?;
+                Ok(Blad::Unit)
             }
             _ => Err(BladError::ExpectedSymbol),
         },
@@ -71,7 +64,7 @@ pub fn process_operator(list: &[Blad], env: &mut Environment) -> Result<Blad, Bl
             let mut result = vec![];
 
             for i in 1..list.len() {
-                let r = eval(&list[i], env)?;
+                let r = eval(&list[i], env.clone())?;
                 result.push(r);
             }
 
@@ -80,17 +73,17 @@ pub fn process_operator(list: &[Blad], env: &mut Environment) -> Result<Blad, Bl
 
         Blad::Keyword(Keyword::Do) => {
             for i in 1..list.len() - 1 {
-                eval(&list[i], env)?;
+                eval(&list[i], env.clone())?;
             }
 
-            eval(list.last().unwrap(), env)
+            eval(list.last().unwrap(), env.clone())
         }
 
         Blad::Keyword(Keyword::Add) => {
             let mut result = vec![];
 
             for i in 0..list.len() - 1 {
-                let r = eval(&list[i + 1], env)?;
+                let r = eval(&list[i + 1], env.clone())?;
                 result.push(r);
             }
 
@@ -129,7 +122,7 @@ pub fn process_operator(list: &[Blad], env: &mut Environment) -> Result<Blad, Bl
             let mut result = vec![];
 
             for i in 0..list.len() - 1 {
-                let r = eval(&list[i + 1], env)?;
+                let r = eval(&list[i + 1], env.clone())?;
                 result.push(r);
             }
 
@@ -171,6 +164,7 @@ pub fn process_operator(list: &[Blad], env: &mut Environment) -> Result<Blad, Bl
             match (params, list.len()) {
                 (Blad::List(p), 3) => {
                     let mut param_strings = vec![];
+                    let closure = Rc::new(RefCell::new(Environment::child_from(env.clone())));
 
                     for blad in p.into_iter() {
                         if let Blad::Symbol(param) = blad {
@@ -180,11 +174,7 @@ pub fn process_operator(list: &[Blad], env: &mut Environment) -> Result<Blad, Bl
                         }
                     }
 
-                    Ok(Blad::Lambda(
-                        env.clone(),
-                        param_strings,
-                        Box::new(body.clone()),
-                    ))
+                    Ok(Blad::Lambda(closure, param_strings, Box::new(body.clone())))
                 }
                 (_, 3) => Err(BladError::ExpectedList),
                 _ => Err(BladError::IncorrectLambdaSyntax),
@@ -196,69 +186,80 @@ pub fn process_operator(list: &[Blad], env: &mut Environment) -> Result<Blad, Bl
                 return Err(BladError::WrongNumberOfArguments);
             }
 
-            let mut e = closure.clone();
-            e.set_parent(&env);
+            let inner_env = Rc::new(RefCell::new(closure.borrow().clone()));
 
             for (i, p) in params.iter().enumerate() {
-                e.set(p, eval(&list[i + 1], env)?)?;
+                let result = eval(&list[i + 1], env.clone())?;
+                inner_env.borrow_mut().set(p, result)?;
             }
 
-            eval(&body, &mut e)
+            eval(&body, inner_env)
         }
 
-        Blad::Keyword(Keyword::Head) => match eval(&list[1], env)? {
+        Blad::Keyword(Keyword::Head) => match eval(&list[1], env.clone())? {
             Blad::Unit => Ok(Blad::Unit),
             Blad::List(l) => Ok(l[0].clone()),
             _ => Err(BladError::ExpectedList),
         },
 
-        Blad::Keyword(Keyword::Tail) => match eval(&list[1], env)? {
+        Blad::Keyword(Keyword::Tail) => match eval(&list[1], env.clone())? {
             Blad::List(l) => {
                 let mut r = vec![];
                 r.extend_from_slice(&l[1..l.len()]);
-                Ok(Blad::List(r))
+
+                if r.len() == 0 {
+                    Ok(Blad::Unit)
+                } else {
+                    Ok(Blad::List(r))
+                }
             }
             _ => Err(BladError::ExpectedList),
         },
 
-        Blad::Keyword(Keyword::If) => match eval(&list[1], env)? {
-            Blad::Unit => eval(&list[3], env),
+        Blad::Keyword(Keyword::If) => match eval(&list[1], env.clone())? {
+            Blad::Unit => eval(&list[3], env.clone()),
             Blad::Literal(Literal::Usize(x)) => {
                 if x != 0 {
-                    eval(&list[2], env)
+                    eval(&list[2], env.clone())
                 } else {
-                    eval(&list[3], env)
+                    eval(&list[3], env.clone())
                 }
             }
-            _ => eval(&list[2], env),
+            _ => eval(&list[2], env.clone()),
         },
 
-        Blad::Keyword(Keyword::Equal) => match (eval(&list[1], env)?, eval(&list[2], env)?) {
-            (Blad::Literal(Literal::Usize(x)), Blad::Literal(Literal::Usize(y))) => {
-                let output = if x == y { 1 } else { 0 };
+        Blad::Keyword(Keyword::Equal) => {
+            match (eval(&list[1], env.clone())?, eval(&list[2], env.clone())?) {
+                (Blad::Literal(Literal::Usize(x)), Blad::Literal(Literal::Usize(y))) => {
+                    let output = if x == y { 1 } else { 0 };
 
-                Ok(Blad::Literal(Literal::Usize(output)))
+                    Ok(Blad::Literal(Literal::Usize(output)))
+                }
+                _ => Err(BladError::ExpectedSameTypes),
             }
-            _ => Err(BladError::ExpectedSameTypes),
-        },
+        }
 
-        Blad::Keyword(Keyword::GreaterThan) => match (eval(&list[1], env)?, eval(&list[2], env)?) {
-            (Blad::Literal(Literal::Usize(x)), Blad::Literal(Literal::Usize(y))) => {
-                let output = if x > y { 1 } else { 0 };
+        Blad::Keyword(Keyword::GreaterThan) => {
+            match (eval(&list[1], env.clone())?, eval(&list[2], env.clone())?) {
+                (Blad::Literal(Literal::Usize(x)), Blad::Literal(Literal::Usize(y))) => {
+                    let output = if x > y { 1 } else { 0 };
 
-                Ok(Blad::Literal(Literal::Usize(output)))
+                    Ok(Blad::Literal(Literal::Usize(output)))
+                }
+                _ => Err(BladError::ExpectedSameTypes),
             }
-            _ => Err(BladError::ExpectedSameTypes),
-        },
+        }
 
-        Blad::Keyword(Keyword::LessThan) => match (eval(&list[1], env)?, eval(&list[2], env)?) {
-            (Blad::Literal(Literal::Usize(x)), Blad::Literal(Literal::Usize(y))) => {
-                let output = if x < y { 1 } else { 0 };
+        Blad::Keyword(Keyword::LessThan) => {
+            match (eval(&list[1], env.clone())?, eval(&list[2], env.clone())?) {
+                (Blad::Literal(Literal::Usize(x)), Blad::Literal(Literal::Usize(y))) => {
+                    let output = if x < y { 1 } else { 0 };
 
-                Ok(Blad::Literal(Literal::Usize(output)))
+                    Ok(Blad::Literal(Literal::Usize(output)))
+                }
+                _ => Err(BladError::ExpectedSameTypes),
             }
-            _ => Err(BladError::ExpectedSameTypes),
-        },
+        }
 
         _ => Err(BladError::ExpectedProcedure),
     }

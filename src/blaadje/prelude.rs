@@ -1,4 +1,6 @@
 use super::{eval, parse, Environment};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 const PRELUDE: &'static str = "
     (let false 0)
@@ -17,16 +19,24 @@ const PRELUDE: &'static str = "
         (or (> a b) (= a b))))
 
     (let empty?
-        (lambda (l) (if (head l) true false)))
+        (lambda (l) (if (head l) false true)))
+
+    (let length (lambda (l) (do
+        (let r (lambda (l i)
+            (if (empty? l) i (r (tail l) (+ i 1)))
+        ))
+
+        (r l 0)
+    )))
 ";
 
-pub fn prelude_environment() -> Environment {
-    let mut env = Environment::new();
+pub fn prelude_environment() -> Rc<RefCell<Environment>> {
+    let env = Rc::new(RefCell::new(Environment::new()));
 
     let program = parse(PRELUDE).unwrap();
 
     for i in 0..program.len() {
-        eval(&program[i], &mut env).unwrap();
+        eval(&program[i], env.clone()).unwrap();
     }
 
     env
@@ -42,7 +52,7 @@ mod tests {
 
         assert_eq!(
             run_program(&program).unwrap(),
-            Blad::Literal(Literal::Usize(0)),
+            Blad::Literal(Literal::Usize(1)),
         );
     }
 
@@ -52,7 +62,7 @@ mod tests {
 
         assert_eq!(
             run_program(&program).unwrap(),
-            Blad::Literal(Literal::Usize(1)),
+            Blad::Literal(Literal::Usize(0)),
         );
     }
 
@@ -102,18 +112,18 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_length() {
-    //     let program = parse(
-    //         "
-    //         (length '(1 2 3 4))
-    //     ",
-    //     )
-    //     .unwrap();
+    #[test]
+    fn test_length() {
+        let program = parse(
+            "
+            (length '(1 2 3 4))
+        ",
+        )
+        .unwrap();
 
-    //     assert_eq!(
-    //         run_program(&program).unwrap(),
-    //         Blad::Literal(Literal::Usize(4)),
-    //     );
-    // }
+        assert_eq!(
+            run_program(&program).unwrap(),
+            Blad::Literal(Literal::Usize(4)),
+        );
+    }
 }

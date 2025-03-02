@@ -10,6 +10,9 @@ pub use env::Environment;
 pub use eval::{eval, run_program};
 pub use parse::parse;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Blad {
     Unit,
@@ -17,7 +20,7 @@ pub enum Blad {
     Literal(Literal),
     Symbol(String),
     Quote(Box<Blad>),
-    Lambda(Environment, Vec<String>, Box<Blad>),
+    Lambda(Rc<RefCell<Environment>>, Vec<String>, Box<Blad>),
     Keyword(Keyword),
 }
 
@@ -46,7 +49,7 @@ pub enum Keyword {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BladError {
-    AttemptToRedefineVariable,
+    AttemptToRedefineVariable(String),
     ExpectedBoolean,
     ExpectedF32,
     ExpectedList,

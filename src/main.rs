@@ -4,8 +4,10 @@ use blaadje::{parse, run_program};
 
 fn main() {
     let code = "
-        (let x 10)
-        (+ 2 x)
+        (let foo (lambda (x) (+ x 1)))
+        (let bar (lambda (y) (+ y 1)))
+        (let x 1)
+        (+ 1 2)
     ";
 
     let program = parse(code).unwrap();
