@@ -56,7 +56,7 @@ impl Environment {
 
 impl fmt::Debug for Environment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "env")
+        write!(f, "Environment")
     }
 }
 

@@ -1,8 +1,8 @@
-use super::{Blad, BladError, Literal};
+use super::{Blad, BladError, Keyword, Literal};
 
-pub fn parse(input: &str) -> Result<Vec<Blad>, BladError> {
+pub fn parse(input: &str) -> Result<Blad, BladError> {
     let tokens = tokenize(input);
-    let mut program = vec![];
+    let mut program = vec![Blad::Keyword(Keyword::Do)];
     let mut index = 0;
 
     loop {
@@ -15,7 +15,7 @@ pub fn parse(input: &str) -> Result<Vec<Blad>, BladError> {
         }
     }
 
-    Ok(program)
+    Ok(Blad::List(program))
 }
 
 fn tokenize(input: &str) -> Vec<String> {
@@ -27,8 +27,6 @@ fn tokenize(input: &str) -> Vec<String> {
         .collect()
 }
 
-// @TODO: try this
-// fn parse_tokens(tokens: &[str]) -> Result<(Blad, usize), BladError> {
 fn parse_tokens<S: AsRef<str>>(tokens: &[S]) -> Result<(Blad, usize), BladError> {
     match tokens[0].as_ref() {
         "(" => {

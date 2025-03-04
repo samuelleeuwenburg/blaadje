@@ -1,17 +1,11 @@
-// https://norvig.com/lispy.html
-#![allow(dead_code)]
-
 mod env;
 mod eval;
+mod operators;
 mod parse;
-mod prelude;
 
 pub use env::Environment;
-pub use eval::{eval, run_program};
+pub use eval::eval;
 pub use parse::parse;
-
-use std::cell::RefCell;
-use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Blad {
@@ -20,7 +14,7 @@ pub enum Blad {
     Literal(Literal),
     Symbol(String),
     Quote(Box<Blad>),
-    Lambda(Rc<RefCell<Environment>>, Vec<String>, Box<Blad>),
+    Lambda(Environment, Vec<String>, Box<Blad>),
     Keyword(Keyword),
 }
 
@@ -50,19 +44,17 @@ pub enum Keyword {
 #[derive(Debug, Clone, PartialEq)]
 pub enum BladError {
     AttemptToRedefineVariable(String),
-    ExpectedBoolean,
-    ExpectedF32,
-    ExpectedList,
-    ExpectedNumber,
-    ExpectedProcedure,
-    ExpectedSymbol,
-    ExpectedUsize,
-    ExpectedSameTypes,
-    IncorrectLambdaSyntax,
+    ExpectedF32(Blad),
+    ExpectedList(Blad),
+    ExpectedNumber(Blad),
+    ExpectedProcedure(Blad),
+    ExpectedSymbol(Blad),
+    ExpectedUsize(Blad),
+    ExpectedSameTypes(Blad, Blad),
+    IncorrectLambdaSyntax(Blad),
     InvalidToken(String),
-    UndefinedOperator,
-    UndefinedSymbol,
+    UndefinedSymbol(String),
     UnexpectedToken(String),
     UnsupportedNumericType(String),
-    WrongNumberOfArguments,
+    WrongNumberOfArguments(usize, usize),
 }
