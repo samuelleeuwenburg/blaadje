@@ -14,7 +14,8 @@ pub fn process_equal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Bla
 
             Ok(Blad::Literal(Literal::Usize(output)))
         }
-        _ => Err(BladError::ExpectedSameTypes(a, b)),
+        (Blad::Unit, Blad::Unit) => Ok(Blad::Literal(Literal::Usize(1))),
+        _ => Ok(Blad::Literal(Literal::Usize(0))),
     }
 }
 pub fn process_greater_than(
@@ -87,5 +88,13 @@ mod tests {
     fn less_than() {
         assert_eq!(run("(< 7 7)").unwrap(), Blad::Literal(Literal::Usize(0)));
         assert_eq!(run("(< 7 42)").unwrap(), Blad::Literal(Literal::Usize(1)));
+    }
+
+    #[test]
+    fn unit() {
+        assert_eq!(
+            run("(= '() '())").unwrap(),
+            Blad::Literal(Literal::Usize(1))
+        );
     }
 }

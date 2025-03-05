@@ -49,6 +49,36 @@ pub fn process_tail(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad
     }
 }
 
+pub fn process_cons(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    let item = eval(&list[0], env.clone())?;
+    let items = eval(&list[1], env.clone())?;
+
+    match items {
+        Blad::Unit => Ok(Blad::List(vec![item])),
+        Blad::List(l) => {
+            let mut new_items = vec![item];
+            new_items.extend_from_slice(&l);
+            Ok(Blad::List(new_items))
+        }
+        _ => Err(BladError::ExpectedList(items)),
+    }
+}
+
+pub fn process_append(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    let item = eval(&list[0], env.clone())?;
+    let items = eval(&list[1], env.clone())?;
+
+    match items {
+        Blad::Unit => Ok(Blad::List(vec![item])),
+        Blad::List(l) => {
+            let mut new_items = l.clone();
+            new_items.push(item);
+            Ok(Blad::List(new_items))
+        }
+        _ => Err(BladError::ExpectedList(items)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,5 +150,47 @@ mod tests {
     #[test]
     fn tail_empty() {
         assert_eq!(run("(tail '())").unwrap(), Blad::Unit);
+    }
+
+    #[test]
+    fn cons() {
+        assert_eq!(
+            run("(cons 1 '(2 3 4))").unwrap(),
+            Blad::List(vec![
+                Blad::Literal(Literal::Usize(1)),
+                Blad::Literal(Literal::Usize(2)),
+                Blad::Literal(Literal::Usize(3)),
+                Blad::Literal(Literal::Usize(4)),
+            ])
+        );
+    }
+
+    #[test]
+    fn cons_empty() {
+        assert_eq!(
+            run("(cons 1 '())").unwrap(),
+            Blad::List(vec![Blad::Literal(Literal::Usize(1))])
+        );
+    }
+
+    #[test]
+    fn append() {
+        assert_eq!(
+            run("(append 1 '(2 3 4))").unwrap(),
+            Blad::List(vec![
+                Blad::Literal(Literal::Usize(2)),
+                Blad::Literal(Literal::Usize(3)),
+                Blad::Literal(Literal::Usize(4)),
+                Blad::Literal(Literal::Usize(1)),
+            ])
+        );
+    }
+
+    #[test]
+    fn append_empty() {
+        assert_eq!(
+            run("(append 1 '())").unwrap(),
+            Blad::List(vec![Blad::Literal(Literal::Usize(1))])
+        );
     }
 }

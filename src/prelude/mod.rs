@@ -14,15 +14,37 @@ const PRELUDE: &'static str = "
 
     (let >= (fn (a b) (or (> a b) (= a b))))
 
-    (let empty? (fn (l) (if (head l) false true)))
+    (let empty? (fn (l) (if (= (head l) '()) true false)))
 
-    (let length (fn (l) (do
-        (let r (fn (l i)
-            (if (empty? l) i (r (tail l) (+ i 1)))
+    (let length (fn (items) (do
+        (let f (fn (items index)
+            (if (empty? items) index (f (tail items) (+ index 1)))
         ))
 
-        (r l 0)
+        (f items 0)
     )))
+
+    (let fold (fn (items initial_value function) (do
+        (if (empty? items)
+            initial_value
+            (do
+                (let result (function initial_value (head items)))
+                (fold (tail items) result function)
+            )
+        )
+    )))
+
+    (let map (fn (items f)
+        (fold items '() (fn (xs x)
+            (append (f x) xs)
+        ))
+    ))
+
+    (let filter (fn (items f)
+        (fold items '() (fn (xs x)
+            (if (f x) (append x xs) xs)
+        ))
+    ))
 ";
 
 pub fn prelude_environment() -> Result<Rc<RefCell<Environment>>, BladError> {
@@ -30,8 +52,6 @@ pub fn prelude_environment() -> Result<Rc<RefCell<Environment>>, BladError> {
 
     let program = parse(PRELUDE)?;
     eval(&program, env.clone())?;
-
-    println!("\n\n===========END OF PRELUDE==========\n\n");
 
     Ok(env)
 }
@@ -41,7 +61,7 @@ mod tests {
     use crate::{run, Blad, Literal};
 
     #[test]
-    fn test_empty() {
+    fn empty() {
         assert_eq!(
             run("(empty? '())").unwrap(),
             Blad::Literal(Literal::Usize(1)),
@@ -49,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn test_non_empty() {
+    fn non_empty() {
         assert_eq!(
             run("(empty? '(1 2 3))").unwrap(),
             Blad::Literal(Literal::Usize(0)),
@@ -57,7 +77,7 @@ mod tests {
     }
 
     #[test]
-    fn test_or() {
+    fn or() {
         assert_eq!(
             run("(or true true)").unwrap(),
             Blad::Literal(Literal::Usize(1)),
@@ -80,7 +100,7 @@ mod tests {
     }
 
     #[test]
-    fn test_and() {
+    fn and() {
         assert_eq!(
             run("(and true true)").unwrap(),
             Blad::Literal(Literal::Usize(1)),
@@ -102,11 +122,43 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_length() {
-    //     assert_eq!(
-    //         run("(length '(1 2 3 4))").unwrap(),
-    //         Blad::Literal(Literal::Usize(4)),
-    //     );
-    // }
+    #[test]
+    fn length() {
+        assert_eq!(
+            run("(length '(1 2 3 4))").unwrap(),
+            Blad::Literal(Literal::Usize(4)),
+        );
+    }
+
+    #[test]
+    fn fold() {
+        assert_eq!(
+            run("(fold '(1 2 3 4) 0 +)").unwrap(),
+            Blad::Literal(Literal::Usize(10)),
+        );
+    }
+
+    #[test]
+    fn map() {
+        assert_eq!(
+            run("(map '(0 1 2 3) (fn (x) (+ x 1)))").unwrap(),
+            Blad::List(vec![
+                Blad::Literal(Literal::Usize(1)),
+                Blad::Literal(Literal::Usize(2)),
+                Blad::Literal(Literal::Usize(3)),
+                Blad::Literal(Literal::Usize(4)),
+            ])
+        );
+    }
+
+    #[test]
+    fn filter() {
+        assert_eq!(
+            run("(filter '(8 2 6 3) (fn (x) (> x 4)))").unwrap(),
+            Blad::List(vec![
+                Blad::Literal(Literal::Usize(8)),
+                Blad::Literal(Literal::Usize(6)),
+            ])
+        );
+    }
 }

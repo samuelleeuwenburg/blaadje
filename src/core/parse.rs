@@ -22,6 +22,7 @@ fn tokenize(input: &str) -> Vec<String> {
     input
         .replace("(", " ( ")
         .replace(")", " ) ")
+        .replace("'", " ' ")
         .split_whitespace()
         .map(str::to_string)
         .collect()
@@ -64,8 +65,25 @@ fn parse_token(token: &str) -> Result<Blad, BladError> {
         return parse_token_numeric(token);
     }
 
-    // Symbol
-    Ok(Blad::Symbol(token.to_owned()))
+    // Keywords / Symbols
+    match token {
+        "+" => Ok(Blad::Keyword(Keyword::Add)),
+        "-" => Ok(Blad::Keyword(Keyword::Subtract)),
+        "<" => Ok(Blad::Keyword(Keyword::LessThan)),
+        "=" => Ok(Blad::Keyword(Keyword::Equal)),
+        ">" => Ok(Blad::Keyword(Keyword::GreaterThan)),
+        "append" => Ok(Blad::Keyword(Keyword::Append)),
+        "cons" => Ok(Blad::Keyword(Keyword::Cons)),
+        "do" => Ok(Blad::Keyword(Keyword::Do)),
+        "fn" => Ok(Blad::Keyword(Keyword::Lambda)),
+        "head" => Ok(Blad::Keyword(Keyword::Head)),
+        "if" => Ok(Blad::Keyword(Keyword::If)),
+        "let" => Ok(Blad::Keyword(Keyword::Let)),
+        "list" => Ok(Blad::Keyword(Keyword::List)),
+        "macro" => Ok(Blad::Keyword(Keyword::Macro)),
+        "tail" => Ok(Blad::Keyword(Keyword::Tail)),
+        _ => Ok(Blad::Symbol(token.to_owned())),
+    }
 }
 
 fn parse_token_numeric(token: &str) -> Result<Blad, BladError> {
@@ -90,15 +108,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tokenize() {
-        let input = "(+ 1 (- 3 4))";
-        let tokens = tokenize(input);
+    fn tokenize_input() {
+        assert_eq!(
+            tokenize("(+ 1 (- 3 4))"),
+            ["(", "+", "1", "(", "-", "3", "4", ")", ")"]
+        );
 
-        assert_eq!(tokens, ["(", "+", "1", "(", "-", "3", "4", ")", ")"])
+        assert_eq!(
+            tokenize("('y '(+ 1 2))"),
+            ["(", "'", "y", "'", "(", "+", "1", "2", ")", ")"]
+        );
     }
 
     #[test]
-    fn test_parse_tokens() {
+    fn parse() {
         let input = "(+ 1 4)";
         let tokens = tokenize(input);
         let (ast, _) = parse_tokens(&tokens).unwrap();
@@ -106,7 +129,7 @@ mod tests {
         assert_eq!(
             ast,
             Blad::List(vec![
-                Blad::Symbol("+".into()),
+                Blad::Keyword(Keyword::Add),
                 Blad::Literal(Literal::Usize(1)),
                 Blad::Literal(Literal::Usize(4)),
             ]),
@@ -114,7 +137,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_quote() {
+    fn parse_quote() {
         let input = "(let x '(+ 2 3))";
         let tokens = tokenize(input);
         let (ast, _) = parse_tokens(&tokens).unwrap();
@@ -122,14 +145,26 @@ mod tests {
         assert_eq!(
             ast,
             Blad::List(vec![
-                Blad::Symbol("let".into()),
+                Blad::Keyword(Keyword::Let),
                 Blad::Symbol("x".into()),
                 Blad::Quote(Box::new(Blad::List(vec![
-                    Blad::Symbol("+".into()),
+                    Blad::Keyword(Keyword::Add),
                     Blad::Literal(Literal::Usize(2)),
                     Blad::Literal(Literal::Usize(3)),
                 ]))),
             ]),
+        );
+    }
+
+    #[test]
+    fn parse_quoted_symbol() {
+        let input = "('x)";
+        let tokens = tokenize(input);
+        let (ast, _) = parse_tokens(&tokens).unwrap();
+
+        assert_eq!(
+            ast,
+            Blad::List(vec![Blad::Quote(Box::new(Blad::Symbol("x".into())))]),
         );
     }
 }

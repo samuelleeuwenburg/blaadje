@@ -9,13 +9,14 @@ pub use parse::parse;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Blad {
-    Unit,
+    Keyword(Keyword),
+    Lambda(Environment, Vec<String>, Box<Blad>),
     List(Vec<Blad>),
     Literal(Literal),
-    Symbol(String),
+    Macro(Vec<String>, Box<Blad>),
     Quote(Box<Blad>),
-    Lambda(Environment, Vec<String>, Box<Blad>),
-    Keyword(Keyword),
+    Symbol(String),
+    Unit,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,17 +29,20 @@ pub enum Literal {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Keyword {
     Add,
+    Append,
+    Cons,
     Do,
+    Equal,
+    GreaterThan,
     Head,
     If,
     Lambda,
+    LessThan,
     Let,
     List,
+    Macro,
     Subtract,
     Tail,
-    Equal,
-    GreaterThan,
-    LessThan,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,6 +56,7 @@ pub enum BladError {
     ExpectedUsize(Blad),
     ExpectedSameTypes(Blad, Blad),
     IncorrectLambdaSyntax(Blad),
+    IncorrectMacroSyntax(Blad),
     InvalidToken(String),
     UndefinedSymbol(String),
     UnexpectedToken(String),
