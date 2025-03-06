@@ -28,14 +28,14 @@ fn tokenize(input: &str) -> Vec<String> {
         .collect()
 }
 
-fn parse_tokens<S: AsRef<str>>(tokens: &[S]) -> Result<(Blad, usize), BladError> {
-    match tokens[0].as_ref() {
-        "(" => {
+fn parse_tokens(tokens: &[String]) -> Result<(Blad, usize), BladError> {
+    match tokens.get(0).map(|s| s.as_str()) {
+        Some("(") => {
             let mut blaadjes = vec![];
             // Start after the opening `(`
             let mut index = 1;
 
-            while tokens[index].as_ref() != ")" {
+            while tokens.get(index).ok_or(BladError::ParseError(index))? != ")" {
                 let (blad, steps) = parse_tokens(&tokens[index..tokens.len()])?;
                 blaadjes.push(blad);
                 index += steps;
@@ -50,12 +50,13 @@ fn parse_tokens<S: AsRef<str>>(tokens: &[S]) -> Result<(Blad, usize), BladError>
                 Ok((Blad::List(blaadjes), index))
             }
         }
-        ")" => Err(BladError::UnexpectedToken(")".into())),
-        "'" => {
+        Some(")") => Err(BladError::UnexpectedToken(")".into())),
+        Some("'") => {
             let (blad, steps) = parse_tokens(&tokens[1..tokens.len()])?;
             Ok((Blad::Quote(Box::new(blad)), steps + 1))
         }
-        t => Ok((parse_token(&t)?, 1)),
+        Some(t) => Ok((parse_token(&t)?, 1)),
+        None => Ok((Blad::Unit, 0)),
     }
 }
 
