@@ -1,10 +1,12 @@
 mod env;
+mod error;
 mod eval;
 mod operators;
 mod parse;
 
 use super::audio::{Message, Screech};
 pub use env::Environment;
+pub use error::Error;
 pub use eval::{args, args_min, eval};
 pub use parse::parse;
 
@@ -61,30 +63,4 @@ pub enum Keyword {
     Macro,
     Subtract,
     Tail,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum BladError {
-    AttemptToRedefineVariable(String),
-    ExpectedAtom(Blad),
-    ExpectedF32(Blad),
-    ExpectedList(Blad),
-    ExpectedNumber(Blad),
-    ExpectedProcedure(Blad),
-    ExpectedSameTypes(Blad, Blad),
-    ExpectedScreechModule(Blad),
-    ExpectedScreechSignal(Blad),
-    ExpectedSymbol(Blad),
-    ExpectedUsize(Blad),
-    IncorrectArguments(Vec<BladError>),
-    IncorrectLambdaSyntax(Blad),
-    IncorrectMacroSyntax(Blad),
-    IncorrectNumberOfArguments(usize, usize),
-    InvalidToken(String),
-    ParseError(usize),
-    UndefinedOperator(String),
-    UndefinedSymbol(String),
-    UnexpectedMessage(Message),
-    UnexpectedToken(String),
-    UnsupportedNumericType(String),
 }

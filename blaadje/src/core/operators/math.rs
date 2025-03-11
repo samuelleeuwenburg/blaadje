@@ -1,10 +1,10 @@
 use super::super::{args_min, eval};
-use crate::{Blad, BladError, Environment, Literal};
+use crate::{Blad, Environment, Error, Literal};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn process_add(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_add(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args_min(list, 1)?;
 
     let result: Vec<Blad> = list
@@ -21,11 +21,11 @@ pub fn process_add(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad,
             let sum = get_floats(&result)?.iter().sum();
             Ok(Blad::Literal(Literal::F32(sum)))
         }
-        _ => Err(BladError::ExpectedNumber(result[0].clone())),
+        _ => Err(Error::ExpectedNumber(result[0].clone())),
     }
 }
 
-pub fn process_subtract(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_subtract(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args_min(list, 1)?;
 
     let result: Vec<Blad> = list
@@ -44,30 +44,30 @@ pub fn process_subtract(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<
             let sum = nums.iter().skip(1).fold(nums[0], |acc, &x| acc - x);
             Ok(Blad::Literal(Literal::F32(sum)))
         }
-        _ => Err(BladError::ExpectedNumber(result[0].clone())),
+        _ => Err(Error::ExpectedNumber(result[0].clone())),
     }
 }
 
-fn get_usizes(list: &[Blad]) -> Result<Vec<usize>, BladError> {
+fn get_usizes(list: &[Blad]) -> Result<Vec<usize>, Error> {
     let mut nums = vec![];
 
     for b in list {
         match b {
             Blad::Literal(Literal::Usize(x)) => nums.push(*x),
-            _ => return Err(BladError::ExpectedUsize(b.clone())),
+            _ => return Err(Error::ExpectedUsize(b.clone())),
         }
     }
 
     Ok(nums)
 }
 
-fn get_floats(list: &[Blad]) -> Result<Vec<f32>, BladError> {
+fn get_floats(list: &[Blad]) -> Result<Vec<f32>, Error> {
     let mut nums = vec![];
 
     for b in list {
         match b {
             Blad::Literal(Literal::F32(x)) => nums.push(*x),
-            _ => return Err(BladError::ExpectedUsize(b.clone())),
+            _ => return Err(Error::ExpectedUsize(b.clone())),
         }
     }
 

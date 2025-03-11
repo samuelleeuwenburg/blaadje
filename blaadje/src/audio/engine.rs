@@ -49,10 +49,6 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             messages
         };
 
-        if messages.len() > 0 {
-            println!("messages received: {:?}", messages);
-        }
-
         for m in messages {
             match m {
                 Message::AddOscillator => {

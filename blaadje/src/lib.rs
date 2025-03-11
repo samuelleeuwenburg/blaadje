@@ -6,11 +6,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 pub use audio::{Channel, Engine, Message};
-pub use core::{eval, parse, Environment};
-pub use core::{Blad, BladError, Literal};
+pub use core::{eval, parse, Blad, Environment, Error, Literal};
 pub use prelude::set_prelude;
 
-pub fn run(code: &str) -> Result<Blad, BladError> {
+pub fn run(code: &str) -> Result<Blad, Error> {
     let (env, _) = Environment::new();
     let env = Rc::new(RefCell::new(env));
 
@@ -21,7 +20,7 @@ pub fn run(code: &str) -> Result<Blad, BladError> {
     eval(&program, env.clone())
 }
 
-pub fn run_with_env(code: &str, env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn run_with_env(code: &str, env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     let program = parse(code)?;
     eval(&program, env)
 }

@@ -1,4 +1,4 @@
-use super::{Blad, BladError};
+use super::{Blad, Error};
 use crate::{Channel, Message};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -41,9 +41,9 @@ impl Environment {
         self.parent = Some(env);
     }
 
-    pub fn set(&mut self, key: &str, value: Blad) -> Result<(), BladError> {
+    pub fn set(&mut self, key: &str, value: Blad) -> Result<(), Error> {
         if self.values.get(key).is_some() {
-            return Err(BladError::AttemptToRedefineVariable(key.into()));
+            return Err(Error::AttemptToRedefineVariable(key.into()));
         }
 
         self.values.insert(key.into(), value);

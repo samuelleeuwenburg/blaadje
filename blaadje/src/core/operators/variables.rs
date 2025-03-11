@@ -1,10 +1,10 @@
 use super::super::{args, eval};
-use crate::{Blad, BladError, Environment};
+use crate::{Blad, Environment, Error};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn process_let(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_let(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let symbol = &list[0];
@@ -16,7 +16,7 @@ pub fn process_let(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad,
             env.borrow_mut().set(key, result)?;
             Ok(Blad::Unit)
         }
-        _ => Err(BladError::ExpectedSymbol(symbol.clone())),
+        _ => Err(Error::ExpectedSymbol(symbol.clone())),
     }
 }
 
@@ -51,7 +51,7 @@ mod tests {
                 )
             ")
             .unwrap_err(),
-            BladError::AttemptToRedefineVariable(_),
+            Error::AttemptToRedefineVariable(_),
         ));
     }
 

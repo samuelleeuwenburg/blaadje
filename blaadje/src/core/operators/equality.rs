@@ -1,10 +1,10 @@
 use super::super::{args, eval};
-use crate::{Blad, BladError, Environment, Literal};
+use crate::{Blad, Environment, Error, Literal};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn process_equal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_equal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let a = eval(&list[0], env.clone())?;
@@ -16,10 +16,8 @@ pub fn process_equal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Bla
         Ok(Blad::Literal(Literal::Usize(0)))
     }
 }
-pub fn process_greater_than(
-    list: &[Blad],
-    env: Rc<RefCell<Environment>>,
-) -> Result<Blad, BladError> {
+
+pub fn process_greater_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let a = eval(&list[0], env.clone())?;
@@ -31,11 +29,11 @@ pub fn process_greater_than(
 
             Ok(Blad::Literal(Literal::Usize(output)))
         }
-        _ => Err(BladError::ExpectedSameTypes(a, b)),
+        _ => Err(Error::ExpectedSameTypes(a, b)),
     }
 }
 
-pub fn process_less_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_less_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let a = eval(&list[0], env.clone())?;
@@ -47,7 +45,7 @@ pub fn process_less_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result
 
             Ok(Blad::Literal(Literal::Usize(output)))
         }
-        _ => Err(BladError::ExpectedSameTypes(a, b)),
+        _ => Err(Error::ExpectedSameTypes(a, b)),
     }
 }
 

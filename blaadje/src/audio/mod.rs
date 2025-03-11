@@ -1,5 +1,5 @@
 use crate::core::args;
-use crate::{eval, Blad, BladError, Environment, Literal};
+use crate::{eval, Blad, Environment, Error, Literal};
 use screech::Signal;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,18 +20,18 @@ pub fn process_screech(
     operator: &str,
     list: &[Blad],
     env: Rc<RefCell<Environment>>,
-) -> Result<Blad, BladError> {
+) -> Result<Blad, Error> {
     let rest = &list[0..list.len()];
 
     match operator {
         ":signal" => process_signal(rest, env.clone()),
         ":output" => process_output(rest, env.clone()),
         ":oscillator" => process_oscillator(rest, env.clone()),
-        _ => Err(BladError::UndefinedOperator(operator.into())),
+        _ => Err(Error::UndefinedOperator(operator.into())),
     }
 }
 
-fn process_signal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+fn process_signal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 1)?;
 
     let result = eval(&list[0], env.clone())?;
@@ -40,14 +40,14 @@ fn process_signal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, 
         Blad::Screech(Screech::Oscillator(id)) => {
             match env.borrow_mut().channel_call(Message::GetSignal(*id)) {
                 Message::Signal(signal) => Ok(Blad::Screech(Screech::Signal(signal))),
-                msg => Err(BladError::UnexpectedMessage(msg)),
+                msg => Err(Error::UnexpectedMessage(msg)),
             }
         }
-        _ => Err(BladError::ExpectedScreechModule(result)),
+        _ => Err(Error::ExpectedScreechModule(result)),
     }
 }
 
-fn process_output(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+fn process_output(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let channel = eval(&list[0], env.clone())?;
@@ -59,14 +59,14 @@ fn process_output(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, 
                 .channel_cast(Message::AddSignalToMainOut(*channel, *signal));
             Ok(Blad::Unit)
         }
-        _ => Err(BladError::IncorrectArguments(vec![
-            BladError::ExpectedUsize(channel),
-            BladError::ExpectedScreechSignal(signal),
+        _ => Err(Error::IncorrectArguments(vec![
+            Error::ExpectedUsize(channel),
+            Error::ExpectedScreechSignal(signal),
         ])),
     }
 }
 
-fn process_oscillator(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+fn process_oscillator(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 1)?;
 
     let operator = eval(&list[0], env.clone())?;
@@ -75,12 +75,12 @@ fn process_oscillator(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Bl
         Blad::Atom(o) if o == ":new" => {
             match env.borrow_mut().channel_call(Message::AddOscillator) {
                 Message::ModuleId(id) => Ok(Blad::Screech(Screech::Oscillator(id))),
-                msg => Err(BladError::UnexpectedMessage(msg)),
+                msg => Err(Error::UnexpectedMessage(msg)),
             }
         }
         Blad::Atom(o) if o == ":foo" => Ok(Blad::Unit),
-        Blad::Atom(o) => Err(BladError::UndefinedOperator(o.into())),
-        _ => Err(BladError::ExpectedAtom(operator)),
+        Blad::Atom(o) => Err(Error::UndefinedOperator(o.into())),
+        _ => Err(Error::ExpectedAtom(operator)),
     }
 }
 

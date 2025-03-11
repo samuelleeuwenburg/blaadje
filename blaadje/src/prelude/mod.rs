@@ -1,4 +1,4 @@
-use crate::{eval, parse, BladError, Environment};
+use crate::{eval, parse, Environment, Error};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -47,7 +47,7 @@ const PRELUDE: &'static str = "
     ))
 ";
 
-pub fn set_prelude(env: Rc<RefCell<Environment>>) -> Result<Rc<RefCell<Environment>>, BladError> {
+pub fn set_prelude(env: Rc<RefCell<Environment>>) -> Result<Rc<RefCell<Environment>>, Error> {
     let program = parse(PRELUDE)?;
     eval(&program, env.clone())?;
 

@@ -3,12 +3,12 @@ use super::operators::{
     process_head, process_if, process_lambda, process_lambda_call, process_less_than, process_let,
     process_list, process_macro, process_macro_call, process_subtract, process_tail,
 };
-use super::{Blad, BladError, Environment, Keyword};
+use super::{Blad, Environment, Error, Keyword};
 use crate::audio::process_screech;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     match program {
         Blad::Unit
         | Blad::Atom(_)
@@ -21,7 +21,7 @@ pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladE
         Blad::Symbol(string) => env
             .borrow()
             .get(string)
-            .ok_or(BladError::UndefinedSymbol(string.clone())),
+            .ok_or(Error::UndefinedSymbol(string.clone())),
         Blad::List(ref list) if list.is_empty() => Ok(Blad::Unit),
         Blad::List(list) => {
             let operator = eval(list.get(0).unwrap(), env.clone())?;
@@ -50,23 +50,23 @@ pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladE
                     process_lambda_call(closure, params, body, rest, env.clone())
                 }
                 Blad::Macro(params, body) => process_macro_call(params, body, rest, env.clone()),
-                _ => Err(BladError::ExpectedProcedure(operator)),
+                _ => Err(Error::ExpectedProcedure(operator)),
             }
         }
     }
 }
 
-pub fn args(list: &[Blad], args: usize) -> Result<&[Blad], BladError> {
+pub fn args(list: &[Blad], args: usize) -> Result<&[Blad], Error> {
     if list.len() != args {
-        Err(BladError::IncorrectNumberOfArguments(list.len(), args))
+        Err(Error::IncorrectNumberOfArguments(list.len(), args))
     } else {
         Ok(list)
     }
 }
 
-pub fn args_min(list: &[Blad], args: usize) -> Result<&[Blad], BladError> {
+pub fn args_min(list: &[Blad], args: usize) -> Result<&[Blad], Error> {
     if list.len() < args {
-        Err(BladError::IncorrectNumberOfArguments(list.len(), args))
+        Err(Error::IncorrectNumberOfArguments(list.len(), args))
     } else {
         Ok(list)
     }

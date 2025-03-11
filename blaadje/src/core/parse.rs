@@ -1,6 +1,6 @@
-use super::{Blad, BladError, Keyword, Literal};
+use super::{Blad, Error, Keyword, Literal};
 
-pub fn parse(input: &str) -> Result<Blad, BladError> {
+pub fn parse(input: &str) -> Result<Blad, Error> {
     let tokens = tokenize(input);
     let mut program = vec![Blad::Keyword(Keyword::Do)];
     let mut index = 0;
@@ -28,14 +28,14 @@ fn tokenize(input: &str) -> Vec<String> {
         .collect()
 }
 
-fn parse_tokens(tokens: &[String]) -> Result<(Blad, usize), BladError> {
+fn parse_tokens(tokens: &[String]) -> Result<(Blad, usize), Error> {
     match tokens.get(0).map(|s| s.as_str()) {
         Some("(") => {
             let mut blaadjes = vec![];
             // Start after the opening `(`
             let mut index = 1;
 
-            while tokens.get(index).ok_or(BladError::ParseError(index))? != ")" {
+            while tokens.get(index).ok_or(Error::ParseError(index))? != ")" {
                 let (blad, steps) = parse_tokens(&tokens[index..tokens.len()])?;
                 blaadjes.push(blad);
                 index += steps;
@@ -50,7 +50,7 @@ fn parse_tokens(tokens: &[String]) -> Result<(Blad, usize), BladError> {
                 Ok((Blad::List(blaadjes), index))
             }
         }
-        Some(")") => Err(BladError::UnexpectedToken(")".into())),
+        Some(")") => Err(Error::UnexpectedToken(")".into())),
         Some("'") => {
             let (blad, steps) = parse_tokens(&tokens[1..tokens.len()])?;
             Ok((Blad::Quote(Box::new(blad)), steps + 1))
@@ -60,7 +60,7 @@ fn parse_tokens(tokens: &[String]) -> Result<(Blad, usize), BladError> {
     }
 }
 
-fn parse_token(token: &str) -> Result<Blad, BladError> {
+fn parse_token(token: &str) -> Result<Blad, Error> {
     // Numbers
     if token.chars().next().unwrap().is_numeric() {
         return parse_token_numeric(token);
@@ -88,18 +88,18 @@ fn parse_token(token: &str) -> Result<Blad, BladError> {
     }
 }
 
-fn parse_token_numeric(token: &str) -> Result<Blad, BladError> {
+fn parse_token_numeric(token: &str) -> Result<Blad, Error> {
     // Assume float
     if token.contains('.') {
         let float: f32 = token
             .parse()
-            .map_err(|_| BladError::UnsupportedNumericType(token.into()))?;
+            .map_err(|_| Error::UnsupportedNumericType(token.into()))?;
 
         Ok(Blad::Literal(Literal::F32(float)))
     } else {
         let int: usize = token
             .parse()
-            .map_err(|_| BladError::UnsupportedNumericType(token.into()))?;
+            .map_err(|_| Error::UnsupportedNumericType(token.into()))?;
 
         Ok(Blad::Literal(Literal::Usize(int)))
     }

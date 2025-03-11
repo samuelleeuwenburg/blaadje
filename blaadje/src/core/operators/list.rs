@@ -1,10 +1,10 @@
 use super::super::{args, eval};
-use crate::{Blad, BladError, Environment};
+use crate::{Blad, Environment, Error};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn process_list(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_list(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     if list.len() == 0 {
         return Ok(Blad::Unit);
     }
@@ -17,25 +17,25 @@ pub fn process_list(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad
     Ok(Blad::List(result))
 }
 
-pub fn process_do(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_do(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     match process_list(list, env)? {
         Blad::List(b) => Ok(b.last().unwrap_or(&Blad::Unit).clone()),
         blad => Ok(blad),
     }
 }
 
-pub fn process_head(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_head(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 1)?;
 
     let result = eval(&list[0], env.clone())?;
     match result {
         Blad::Unit => Ok(Blad::Unit),
         Blad::List(l) => Ok(l[0].clone()),
-        _ => Err(BladError::ExpectedList(result)),
+        _ => Err(Error::ExpectedList(result)),
     }
 }
 
-pub fn process_tail(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_tail(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 1)?;
 
     let result = eval(&list[0], env.clone())?;
@@ -49,11 +49,11 @@ pub fn process_tail(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad
 
             Ok(Blad::List(tail))
         }
-        _ => Err(BladError::ExpectedList(result)),
+        _ => Err(Error::ExpectedList(result)),
     }
 }
 
-pub fn process_cons(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_cons(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let item = eval(&list[0], env.clone())?;
@@ -66,11 +66,11 @@ pub fn process_cons(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad
             new_items.extend_from_slice(&l);
             Ok(Blad::List(new_items))
         }
-        _ => Err(BladError::ExpectedList(items)),
+        _ => Err(Error::ExpectedList(items)),
     }
 }
 
-pub fn process_append(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_append(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let item = eval(&list[0], env.clone())?;
@@ -83,7 +83,7 @@ pub fn process_append(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Bl
             new_items.push(item);
             Ok(Blad::List(new_items))
         }
-        _ => Err(BladError::ExpectedList(items)),
+        _ => Err(Error::ExpectedList(items)),
     }
 }
 

@@ -1,10 +1,10 @@
 use super::super::{args, eval};
-use crate::{Blad, BladError, Environment};
+use crate::{Blad, Environment, Error};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub fn process_lambda(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+pub fn process_lambda(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let params = &list[0];
@@ -19,14 +19,14 @@ pub fn process_lambda(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Bl
                 if let Blad::Symbol(param) = blad {
                     param_strings.push(param.clone());
                 } else {
-                    return Err(BladError::ExpectedSymbol(blad.clone()));
+                    return Err(Error::ExpectedSymbol(blad.clone()));
                 }
             }
 
             Ok(Blad::Lambda(closure, param_strings, Box::new(body.clone())))
         }
-        (_, 2) => Err(BladError::ExpectedList(params.clone())),
-        _ => Err(BladError::IncorrectLambdaSyntax(Blad::List(list.to_vec()))),
+        (_, 2) => Err(Error::ExpectedList(params.clone())),
+        _ => Err(Error::IncorrectLambdaSyntax(Blad::List(list.to_vec()))),
     }
 }
 
@@ -36,7 +36,7 @@ pub fn process_lambda_call(
     body: &Blad,
     list: &[Blad],
     env: Rc<RefCell<Environment>>,
-) -> Result<Blad, BladError> {
+) -> Result<Blad, Error> {
     args(list, params.len())?;
 
     let inner_env = Rc::new(RefCell::new(closure.clone()));
