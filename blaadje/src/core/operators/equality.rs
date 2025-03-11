@@ -1,27 +1,27 @@
-use super::super::eval;
+use super::super::{args, eval};
 use crate::{Blad, BladError, Environment, Literal};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub fn process_equal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 2)?;
+
     let a = eval(&list[0], env.clone())?;
     let b = eval(&list[1], env.clone())?;
 
-    match (&a, &b) {
-        (Blad::Literal(Literal::Usize(x)), Blad::Literal(Literal::Usize(y))) => {
-            let output = if x == y { 1 } else { 0 };
-
-            Ok(Blad::Literal(Literal::Usize(output)))
-        }
-        (Blad::Unit, Blad::Unit) => Ok(Blad::Literal(Literal::Usize(1))),
-        _ => Ok(Blad::Literal(Literal::Usize(0))),
+    if a == b {
+        Ok(Blad::Literal(Literal::Usize(1)))
+    } else {
+        Ok(Blad::Literal(Literal::Usize(0)))
     }
 }
 pub fn process_greater_than(
     list: &[Blad],
     env: Rc<RefCell<Environment>>,
 ) -> Result<Blad, BladError> {
+    args(list, 2)?;
+
     let a = eval(&list[0], env.clone())?;
     let b = eval(&list[1], env.clone())?;
 
@@ -36,6 +36,8 @@ pub fn process_greater_than(
 }
 
 pub fn process_less_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 2)?;
+
     let a = eval(&list[0], env.clone())?;
     let b = eval(&list[1], env.clone())?;
 

@@ -2,3 +2,7 @@
 name = "blaadje"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+screech = { path = "../../screech/screech" }
+screech-macro = { path = "../../screech/screech-macro"}

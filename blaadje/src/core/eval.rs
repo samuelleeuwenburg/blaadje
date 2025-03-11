@@ -4,17 +4,20 @@ use super::operators::{
     process_list, process_macro, process_macro_call, process_subtract, process_tail,
 };
 use super::{Blad, BladError, Environment, Keyword};
+use crate::audio::process_screech;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
     match program {
-        Blad::Unit | Blad::Literal(_) | Blad::Keyword(_) => Ok(program.clone()),
+        Blad::Unit
+        | Blad::Atom(_)
+        | Blad::Literal(_)
+        | Blad::Keyword(_)
+        | Blad::Screech(_)
+        | Blad::Lambda(_, _, _)
+        | Blad::Macro(_, _) => Ok(program.clone()),
         Blad::Quote(blad) => Ok(*blad.clone()),
-        Blad::Lambda(closure, params, body) => {
-            Ok(Blad::Lambda(closure.clone(), params.clone(), body.clone()))
-        }
-        Blad::Macro(params, body) => Ok(Blad::Macro(params.clone(), body.clone())),
         Blad::Symbol(string) => env
             .borrow()
             .get(string)
@@ -42,6 +45,7 @@ pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladE
                     Keyword::Subtract => process_subtract(rest, env.clone()),
                     Keyword::Tail => process_tail(rest, env.clone()),
                 },
+                Blad::Atom(operator) => process_screech(operator, rest, env.clone()),
                 Blad::Lambda(closure, params, body) => {
                     process_lambda_call(closure, params, body, rest, env.clone())
                 }
@@ -49,6 +53,22 @@ pub fn eval(program: &Blad, env: Rc<RefCell<Environment>>) -> Result<Blad, BladE
                 _ => Err(BladError::ExpectedProcedure(operator)),
             }
         }
+    }
+}
+
+pub fn args(list: &[Blad], args: usize) -> Result<&[Blad], BladError> {
+    if list.len() != args {
+        Err(BladError::IncorrectNumberOfArguments(list.len(), args))
+    } else {
+        Ok(list)
+    }
+}
+
+pub fn args_min(list: &[Blad], args: usize) -> Result<&[Blad], BladError> {
+    if list.len() < args {
+        Err(BladError::IncorrectNumberOfArguments(list.len(), args))
+    } else {
+        Ok(list)
     }
 }
 

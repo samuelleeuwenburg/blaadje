@@ -1,10 +1,12 @@
-use super::super::eval;
+use super::super::{args, eval};
 use crate::{Blad, BladError, Environment, Literal};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub fn process_if(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 3)?;
+
     let condition = eval(&list[0], env.clone())?;
     let right = &list[1];
     let left = &list[2];

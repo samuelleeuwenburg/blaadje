@@ -47,9 +47,7 @@ const PRELUDE: &'static str = "
     ))
 ";
 
-pub fn prelude_environment() -> Result<Rc<RefCell<Environment>>, BladError> {
-    let env = Rc::new(RefCell::new(Environment::new()));
-
+pub fn set_prelude(env: Rc<RefCell<Environment>>) -> Result<Rc<RefCell<Environment>>, BladError> {
     let program = parse(PRELUDE)?;
     eval(&program, env.clone())?;
 

@@ -1,10 +1,12 @@
-use super::super::eval;
+use super::super::{args, eval};
 use crate::{Blad, BladError, Environment};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub fn process_macro(list: &[Blad], _env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 2)?;
+
     let params = &list[0];
     let body = &list[1];
 
@@ -33,9 +35,7 @@ pub fn expand_macro_call(
     list: &[Blad],
     env: Rc<RefCell<Environment>>,
 ) -> Result<Blad, BladError> {
-    if params.len() != list.len() {
-        return Err(BladError::WrongNumberOfArguments(params.len(), list.len()));
-    }
+    args(list, params.len())?;
 
     let inner_env = Rc::new(RefCell::new(Environment::child_from(env.clone())));
 

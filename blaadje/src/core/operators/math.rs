@@ -1,10 +1,12 @@
-use super::super::eval;
+use super::super::{args_min, eval};
 use crate::{Blad, BladError, Environment, Literal};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub fn process_add(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args_min(list, 1)?;
+
     let result: Vec<Blad> = list
         .iter()
         .map(|b| eval(b, env.clone()))
@@ -24,6 +26,8 @@ pub fn process_add(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad,
 }
 
 pub fn process_subtract(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args_min(list, 1)?;
+
     let result: Vec<Blad> = list
         .iter()
         .map(|b| eval(b, env.clone()))

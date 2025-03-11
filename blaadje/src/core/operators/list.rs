@@ -1,4 +1,4 @@
-use super::super::eval;
+use super::super::{args, eval};
 use crate::{Blad, BladError, Environment};
 
 use std::cell::RefCell;
@@ -25,6 +25,8 @@ pub fn process_do(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, 
 }
 
 pub fn process_head(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 1)?;
+
     let result = eval(&list[0], env.clone())?;
     match result {
         Blad::Unit => Ok(Blad::Unit),
@@ -34,6 +36,8 @@ pub fn process_head(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad
 }
 
 pub fn process_tail(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 1)?;
+
     let result = eval(&list[0], env.clone())?;
 
     match result {
@@ -50,6 +54,8 @@ pub fn process_tail(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad
 }
 
 pub fn process_cons(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 2)?;
+
     let item = eval(&list[0], env.clone())?;
     let items = eval(&list[1], env.clone())?;
 
@@ -65,6 +71,8 @@ pub fn process_cons(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad
 }
 
 pub fn process_append(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 2)?;
+
     let item = eval(&list[0], env.clone())?;
     let items = eval(&list[1], env.clone())?;
 

@@ -1,10 +1,12 @@
-use super::super::eval;
+use super::super::{args, eval};
 use crate::{Blad, BladError, Environment};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub fn process_let(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, BladError> {
+    args(list, 2)?;
+
     let symbol = &list[0];
     let value = &list[1];
 

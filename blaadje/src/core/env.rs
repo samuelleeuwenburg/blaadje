@@ -1,27 +1,39 @@
 use super::{Blad, BladError};
+use crate::{Channel, Message};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Environment {
     values: HashMap<String, Blad>,
     parent: Option<Rc<RefCell<Environment>>>,
+    pub channel: Arc<Mutex<Channel>>,
 }
 
 impl Environment {
-    pub fn new() -> Self {
-        Self {
-            values: HashMap::new(),
-            parent: None,
-        }
+    pub fn new() -> (Self, Arc<Mutex<Channel>>) {
+        let channel = Arc::new(Mutex::new(Channel::new()));
+
+        (
+            Self {
+                values: HashMap::new(),
+                parent: None,
+                channel: channel.clone(),
+            },
+            channel,
+        )
     }
 
     pub fn child_from(env: Rc<RefCell<Environment>>) -> Self {
+        let channel = env.borrow().channel.clone();
+
         Self {
             values: HashMap::new(),
             parent: Some(env),
+            channel,
         }
     }
 
@@ -52,6 +64,22 @@ impl Environment {
     pub fn values(&self) -> Vec<(&String, &Blad)> {
         self.values.iter().collect()
     }
+
+    pub fn channel_cast(&mut self, message: Message) {
+        let mut channel = self.channel.lock().unwrap();
+        channel.send(message);
+    }
+
+    pub fn channel_call(&mut self, message: Message) -> Message {
+        self.channel_cast(message);
+
+        loop {
+            let mut channel = self.channel.lock().unwrap();
+            if let Some(response) = channel.take_reply() {
+                return response;
+            }
+        }
+    }
 }
 
 impl fmt::Debug for Environment {
@@ -67,12 +95,13 @@ mod tests {
 
     #[test]
     fn test_child_scope_should_inherit_root() {
-        let root = Rc::new(RefCell::new(Environment::new()));
+        let (root, _) = Environment::new();
+        let root = Rc::new(RefCell::new(root));
         let child = Rc::new(RefCell::new(Environment::child_from(root.clone())));
 
         let _ = root.borrow_mut().set("x", Blad::Literal(Literal::Usize(5)));
 
-        assert_eq!(
+        matches!(
             child.borrow().get("x").unwrap(),
             Blad::Literal(Literal::Usize(5))
         );
