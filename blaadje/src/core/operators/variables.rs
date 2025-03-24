@@ -1,23 +1,18 @@
 use super::super::{args, eval};
 use crate::{Blad, Environment, Error};
+use std::sync::{Arc, Mutex};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-pub fn process_let(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_let(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
-    let symbol = &list[0];
+    let key = &list[0].get_symbol()?;
     let value = &list[1];
 
-    match (symbol, value) {
-        (Blad::Symbol(key), value) => {
-            let result = eval(value, env.clone())?;
-            env.borrow_mut().set(key, result)?;
-            Ok(Blad::Unit)
-        }
-        _ => Err(Error::ExpectedSymbol(symbol.clone())),
-    }
+    let result = eval(value, env.clone())?;
+    let mut env = env.lock().unwrap();
+    env.set(key, result)?;
+
+    Ok(Blad::Unit)
 }
 
 #[cfg(test)]

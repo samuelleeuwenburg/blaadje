@@ -1,0 +1,28 @@
+(Clock.new :clock)
+(Sequencer.new :seq)
+(Osc.new :osc)
+(Osc.new :lfo)
+(Filter.new :filter)
+
+(set :clock :bpm 340.0)
+
+(set :seq :clock (get :clock :output))
+(set :seq :steps '(:c2 :b2 :e2 :g2 :b2))
+
+(set :lfo :frequency 0.12)
+(set :lfo :waveshape :triangle)
+
+(set :osc :frequency (get :seq :frequency_output))
+(set :osc :amplitude 0.7)
+(set :osc :waveshape :saw)
+
+(set :filter :input (get :osc :output))
+
+(set :filter :frequency
+    (offset (scale (get :lfo :output) 700.0) 700.0))
+
+(set :filter :resonance 3.0)
+
+(output (get :filter :output))
+
+

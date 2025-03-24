@@ -1,6 +1,5 @@
 use crate::{eval, parse, Environment, Error};
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 const PRELUDE: &'static str = "
     (let false 0)
@@ -47,9 +46,63 @@ const PRELUDE: &'static str = "
     ))
 ";
 
-pub fn set_prelude(env: Rc<RefCell<Environment>>) -> Result<Rc<RefCell<Environment>>, Error> {
-    let program = parse(PRELUDE)?;
-    eval(&program, env.clone())?;
+const SCREECH_PRELUDE: &'static str = "
+    (let output_left (fn (signal)
+        (call (list :output_left signal))))
+
+    (let output_right (fn (signal)
+        (call (list :output_right signal))))
+
+    (let output (fn (signal)
+        (do
+            (output_left signal)
+            (output_right signal)
+        )
+    ))
+
+    (let output_disconnect_all (fn ()
+        (call (list :output_disconnect_all))))
+
+    (let scale (fn (signal scale)
+        (call (list :scale signal scale))))
+
+    (let offset (fn (signal offset)
+        (call (list :offset signal offset))))
+
+    (let set (fn (module property value)
+        (call (list :set module (list property value)))))
+
+    (let get (fn (module property)
+        (call (list :get module property))))
+
+    (let Osc.new (fn (id)
+        (call (list :insert_module :oscillator id))))
+
+    (let Vca.new (fn (id)
+        (call (list :insert_module :vca id))))
+
+    (let Filter.new (fn (id)
+        (call (list :insert_module :filter id))))
+
+    (let Clock.new (fn (id)
+        (call (list :insert_module :clock id))))
+
+    (let Sequencer.new (fn (id)
+        (call (list :insert_module :sequencer id))))
+
+    (let Module.new (fn (module id properties) (do
+        (let m (module id))
+        (map
+            properties
+            (fn (tuple) (set m (head tuple) (head (tail tuple))))
+        )
+        m
+    )))
+";
+
+pub fn set_prelude(env: Arc<Mutex<Environment>>) -> Result<Arc<Mutex<Environment>>, Error> {
+    eval(&parse(PRELUDE)?, env.clone())?;
+    eval(&parse(SCREECH_PRELUDE)?, env.clone())?;
 
     Ok(env)
 }

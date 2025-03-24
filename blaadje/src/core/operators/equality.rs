@@ -1,10 +1,8 @@
 use super::super::{args, eval};
 use crate::{Blad, Environment, Error, Literal};
+use std::sync::{Arc, Mutex};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-pub fn process_equal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_equal(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let a = eval(&list[0], env.clone())?;
@@ -17,7 +15,7 @@ pub fn process_equal(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Bla
     }
 }
 
-pub fn process_greater_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_greater_than(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let a = eval(&list[0], env.clone())?;
@@ -33,7 +31,7 @@ pub fn process_greater_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Res
     }
 }
 
-pub fn process_less_than(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_less_than(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let a = eval(&list[0], env.clone())?;

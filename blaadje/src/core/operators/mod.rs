@@ -1,3 +1,4 @@
+mod channel;
 mod conditional;
 mod equality;
 mod lambda;
@@ -6,6 +7,7 @@ mod macros;
 mod math;
 mod variables;
 
+pub use channel::{process_call, process_cast};
 pub use conditional::process_if;
 pub use equality::{process_equal, process_greater_than, process_less_than};
 pub use lambda::{process_lambda, process_lambda_call};

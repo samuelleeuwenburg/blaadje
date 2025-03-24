@@ -20,11 +20,11 @@ pub fn init_stream(
         .expect("failed to find output device");
 
     let config = device.default_output_config().unwrap();
-    let sample_format = config.sample_format();
+    // let sample_format = config.sample_format();
     let config: cpal::StreamConfig = config.into();
 
-    let sample_rate = config.sample_rate.0 as f32;
-    let channels = config.channels as usize;
+    // let sample_rate = config.sample_rate.0 as f32;
+    // let channels = config.channels as usize;
 
     // Create a delay in case the input and output devices aren't synced.
     let latency_frames = (150.0 / 1_000.0) * config.sample_rate.0 as f32;
@@ -33,8 +33,6 @@ pub fn init_stream(
     // The buffer to share samples
     let ring = HeapRb::<f32>::new(latency_samples * 2);
     let (producer, mut consumer) = ring.split();
-
-    println!("Default output config: {:?}", config);
 
     let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
         let mut input_fell_behind = false;

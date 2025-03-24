@@ -1,4 +1,4 @@
-use super::{Blad, Message};
+use super::Blad;
 use std::error::Error as StdError;
 use std::fmt;
 
@@ -19,13 +19,18 @@ pub enum Error {
     IncorrectLambdaSyntax(Blad),
     IncorrectMacroSyntax(Blad),
     IncorrectNumberOfArguments(usize, usize),
+    IncorrectPropertyPair(String, Blad),
+    InvalidProperty(String),
     InvalidToken(String),
+    ModuleNotFound(usize),
+    ModuleAtomNotFound(String),
     ParseError(usize),
     UndefinedOperator(String),
     UndefinedSymbol(String),
-    UnexpectedMessage(Message),
     UnexpectedToken(String),
+    UnknownModule(String),
     UnsupportedNumericType(String),
+    InvalidNote(String),
 }
 
 impl fmt::Display for Error {

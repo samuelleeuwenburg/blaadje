@@ -1,10 +1,8 @@
 use super::super::{args_min, eval};
 use crate::{Blad, Environment, Error, Literal};
+use std::sync::{Arc, Mutex};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-pub fn process_add(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_add(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args_min(list, 1)?;
 
     let result: Vec<Blad> = list
@@ -25,7 +23,7 @@ pub fn process_add(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad,
     }
 }
 
-pub fn process_subtract(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_subtract(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args_min(list, 1)?;
 
     let result: Vec<Blad> = list

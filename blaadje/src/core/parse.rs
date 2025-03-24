@@ -74,6 +74,8 @@ fn parse_token(token: &str) -> Result<Blad, Error> {
         "=" => Ok(Blad::Keyword(Keyword::Equal)),
         ">" => Ok(Blad::Keyword(Keyword::GreaterThan)),
         "append" => Ok(Blad::Keyword(Keyword::Append)),
+        "call" => Ok(Blad::Keyword(Keyword::Call)),
+        "cast" => Ok(Blad::Keyword(Keyword::Cast)),
         "cons" => Ok(Blad::Keyword(Keyword::Cons)),
         "do" => Ok(Blad::Keyword(Keyword::Do)),
         "fn" => Ok(Blad::Keyword(Keyword::Lambda)),

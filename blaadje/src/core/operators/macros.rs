@@ -1,10 +1,8 @@
 use super::super::{args, eval};
 use crate::{Blad, Environment, Error};
+use std::sync::{Arc, Mutex};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-pub fn process_macro(list: &[Blad], _env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_macro(list: &[Blad], _env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let params = &list[0];
@@ -33,24 +31,24 @@ pub fn expand_macro_call(
     params: &Vec<String>,
     body: &Blad,
     list: &[Blad],
-    env: Rc<RefCell<Environment>>,
+    env: Arc<Mutex<Environment>>,
 ) -> Result<Blad, Error> {
     args(list, params.len())?;
 
-    let inner_env = Rc::new(RefCell::new(Environment::child_from(env.clone())));
+    let mut inner_env = Environment::child_from(env.clone());
 
     for (i, p) in params.iter().enumerate() {
-        inner_env.borrow_mut().set(p, list[i].clone())?;
+        inner_env.set(p, list[i].clone())?;
     }
 
-    eval(&body, inner_env)
+    eval(&body, Arc::new(Mutex::new(inner_env)))
 }
 
 pub fn process_macro_call(
     params: &Vec<String>,
     body: &Blad,
     list: &[Blad],
-    env: Rc<RefCell<Environment>>,
+    env: Arc<Mutex<Environment>>,
 ) -> Result<Blad, Error> {
     let output = expand_macro_call(params, body, list, env.clone())?;
     eval(&output, env)

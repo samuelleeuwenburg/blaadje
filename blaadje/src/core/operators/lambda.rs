@@ -1,19 +1,19 @@
 use super::super::{args, eval};
 use crate::{Blad, Environment, Error};
+use std::sync::{Arc, Mutex};
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
-pub fn process_lambda(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Blad, Error> {
+pub fn process_lambda(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
     let params = &list[0];
     let body = &list[1];
 
-    match (params, list.len()) {
-        (Blad::List(p), 2) => {
+    let closure = Environment::child_from(env.clone());
+
+    match params {
+        Blad::Unit => Ok(Blad::Lambda(closure, vec![], Box::new(body.clone()))),
+        Blad::List(p) => {
             let mut param_strings = vec![];
-            let closure = Environment::child_from(env.clone());
 
             for blad in p.into_iter() {
                 if let Blad::Symbol(param) = blad {
@@ -25,7 +25,6 @@ pub fn process_lambda(list: &[Blad], env: Rc<RefCell<Environment>>) -> Result<Bl
 
             Ok(Blad::Lambda(closure, param_strings, Box::new(body.clone())))
         }
-        (_, 2) => Err(Error::ExpectedList(params.clone())),
         _ => Err(Error::IncorrectLambdaSyntax(Blad::List(list.to_vec()))),
     }
 }
@@ -35,18 +34,18 @@ pub fn process_lambda_call(
     params: &Vec<String>,
     body: &Blad,
     list: &[Blad],
-    env: Rc<RefCell<Environment>>,
+    env: Arc<Mutex<Environment>>,
 ) -> Result<Blad, Error> {
     args(list, params.len())?;
 
-    let inner_env = Rc::new(RefCell::new(closure.clone()));
+    let mut inner_env = closure.clone();
 
     for (i, p) in params.iter().enumerate() {
         let result = eval(&list[i], env.clone())?;
-        inner_env.borrow_mut().set(p, result)?;
+        inner_env.set(p, result)?;
     }
 
-    eval(&body, inner_env)
+    eval(&body, Arc::new(Mutex::new(inner_env)))
 }
 
 #[cfg(test)]

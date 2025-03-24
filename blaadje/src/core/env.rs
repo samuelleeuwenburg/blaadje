@@ -1,15 +1,19 @@
-use super::{Blad, Error};
-use crate::{Channel, Message};
-use std::cell::RefCell;
+use super::{Blad, Channel, Error, Screech};
 use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+
+#[derive(PartialEq, Copy, Clone)]
+enum Mode {
+    Normal,
+    Live,
+}
 
 #[derive(Clone)]
 pub struct Environment {
+    mode: Mode,
     values: HashMap<String, Blad>,
-    parent: Option<Rc<RefCell<Environment>>>,
+    parent: Option<Arc<Mutex<Environment>>>,
     pub channel: Arc<Mutex<Channel>>,
 }
 
@@ -19,6 +23,7 @@ impl Environment {
 
         (
             Self {
+                mode: Mode::Normal,
                 values: HashMap::new(),
                 parent: None,
                 channel: channel.clone(),
@@ -27,34 +32,43 @@ impl Environment {
         )
     }
 
-    pub fn child_from(env: Rc<RefCell<Environment>>) -> Self {
-        let channel = env.borrow().channel.clone();
+    pub fn child_from(env: Arc<Mutex<Environment>>) -> Self {
+        let channel = {
+            let env = env.lock().unwrap();
+            env.channel.clone()
+        };
 
         Self {
+            mode: Mode::Normal,
             values: HashMap::new(),
             parent: Some(env),
             channel,
         }
     }
 
-    pub fn set_parent(&mut self, env: Rc<RefCell<Environment>>) {
+    pub fn set_parent(&mut self, env: Arc<Mutex<Environment>>) {
         self.parent = Some(env);
     }
 
+    pub fn live_mode(&mut self) {
+        self.mode = Mode::Live;
+    }
+
     pub fn set(&mut self, key: &str, value: Blad) -> Result<(), Error> {
-        if self.values.get(key).is_some() {
-            return Err(Error::AttemptToRedefineVariable(key.into()));
+        match (self.mode, self.values.get(key)) {
+            // Immutability in normal mode
+            (Mode::Normal, Some(_)) => Err(Error::AttemptToRedefineVariable(key.into())),
+            _ => {
+                self.values.insert(key.into(), value);
+                Ok(())
+            }
         }
-
-        self.values.insert(key.into(), value);
-
-        Ok(())
     }
 
     pub fn get(&self, key: &str) -> Option<Blad> {
         match (self.values.get(key), &self.parent) {
             (None, Some(p)) => {
-                let parent = p.borrow();
+                let parent = p.lock().unwrap();
                 parent.get(key)
             }
             (v, _) => v.cloned(),
@@ -65,12 +79,12 @@ impl Environment {
         self.values.iter().collect()
     }
 
-    pub fn channel_cast(&mut self, message: Message) {
+    pub fn channel_cast(&mut self, message: Blad) {
         let mut channel = self.channel.lock().unwrap();
         channel.send(message);
     }
 
-    pub fn channel_call(&mut self, message: Message) -> Message {
+    pub fn channel_call(&mut self, message: Blad) -> Result<Blad, Error> {
         self.channel_cast(message);
 
         loop {
@@ -94,16 +108,41 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_child_scope_should_inherit_root() {
+    fn child_scope_should_inherit_root() {
         let (root, _) = Environment::new();
-        let root = Rc::new(RefCell::new(root));
-        let child = Rc::new(RefCell::new(Environment::child_from(root.clone())));
+        let root = Arc::new(Mutex::new(root));
+        let child = Arc::new(Mutex::new(Environment::child_from(root.clone())));
 
-        let _ = root.borrow_mut().set("x", Blad::Literal(Literal::Usize(5)));
+        {
+            let mut env = root.lock().unwrap();
+            let _ = env.set("x", Blad::Literal(Literal::Usize(5)));
+        }
 
+        let env = child.lock().unwrap();
+        assert_eq!(env.get("x").unwrap(), Blad::Literal(Literal::Usize(5)));
+    }
+
+    #[test]
+    fn immutability() {
+        let (mut env, _) = Environment::new();
+
+        matches!(env.set("x", Blad::Literal(Literal::Usize(10))), Ok(_));
         matches!(
-            child.borrow().get("x").unwrap(),
-            Blad::Literal(Literal::Usize(5))
+            env.set("x", Blad::Unit),
+            Err(Error::AttemptToRedefineVariable(_))
         );
+    }
+
+    #[test]
+    fn live_mode() {
+        let (mut env, _) = Environment::new();
+
+        env.set("x", Blad::Literal(Literal::Usize(10))).unwrap();
+
+        env.live_mode();
+
+        env.set("x", Blad::Literal(Literal::Usize(2))).unwrap();
+
+        assert_eq!(env.get("x").unwrap(), Blad::Literal(Literal::Usize(2)));
     }
 }

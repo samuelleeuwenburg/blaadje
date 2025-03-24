@@ -1,0 +1,27 @@
+(Module.new Clock.new :x2 '((:bpm 120.0)))
+(Module.new Clock.new :x4 '((:bpm 280.0)))
+
+(Module.new Sequencer.new :s1 (list
+    (list :clock (get :x4 :output))
+    (list :steps '(:c2 :e2 :b2 :e2 :c4 :b3 :c2 :g3))
+))
+
+(Module.new Sequencer.new :s2 (list
+    (list :clock (get :x2 :output))
+    (list :steps '(:g3 :f#4 :b4 :d5 :f#4 :g3 :d4))
+))
+
+(Module.new Osc.new :o1 (list
+    (list :frequency (get :s1 :frequency_output))
+    (list :amplitude 0.4)
+    (list :waveshape :saw)
+))
+
+(Module.new Osc.new :o2 (list
+    (list :frequency (get :s2 :frequency_output))
+    (list :amplitude 0.4)
+    (list :waveshape :sine)
+))
+
+(output (get :o1 :output))
+(output (get :o2 :output))
