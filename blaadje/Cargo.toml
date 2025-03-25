@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 screech = { path = "../../screech/screech" }
 screech-macro = { path = "../../screech/screech-macro"}
+wavv = "0.2.0"

@@ -1,19 +1,35 @@
-(Clock.new :clock)
+(Clock.new :x1)
+(Clock.new :x2)
+(Clock.new :x8)
+
 (Sequencer.new :seq)
+
 (Osc.new :osc)
 (Osc.new :lfo)
+
 (Filter.new :filter)
 
-(set :clock :bpm 340.0)
+(Sample.new :kick)
+(Sample.new :snare)
 
-(set :seq :clock (get :clock :output))
+(set :x8 :bpm 340.0)
+(set :x2 :bpm 85.0)
+(set :x1 :bpm 42.5)
+
+(set :kick :samples (samples "./samples/kick.wav"))
+(set :kick :trigger (get :x2 :output))
+
+(set :snare :samples (samples "./samples/snare.wav"))
+(set :snare :trigger (get :x1 :output))
+
+(set :seq :clock (get :x8 :output))
 (set :seq :steps '(:c2 :b2 :e2 :g2 :b2))
 
 (set :lfo :frequency 0.12)
 (set :lfo :waveshape :triangle)
 
 (set :osc :frequency (get :seq :frequency_output))
-(set :osc :amplitude 0.7)
+(set :osc :amplitude 0.1)
 (set :osc :waveshape :saw)
 
 (set :filter :input (get :osc :output))
@@ -24,5 +40,5 @@
 (set :filter :resonance 3.0)
 
 (output (get :filter :output))
-
-
+(output (get :kick :output))
+(output (get :snare :output))

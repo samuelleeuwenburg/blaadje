@@ -84,8 +84,18 @@ fn parse_token(token: &str) -> Result<Blad, Error> {
         "let" => Ok(Blad::Keyword(Keyword::Let)),
         "list" => Ok(Blad::Keyword(Keyword::List)),
         "macro" => Ok(Blad::Keyword(Keyword::Macro)),
+        "samples" => Ok(Blad::Keyword(Keyword::Samples)),
         "tail" => Ok(Blad::Keyword(Keyword::Tail)),
         s if s.starts_with(':') => Ok(Blad::Atom(token.to_owned())),
+        s if s.starts_with('"') && s.ends_with('"') => {
+            let mut string = s.to_owned();
+
+            // Remove `"`
+            string.pop();
+            string.remove(0);
+
+            Ok(Blad::Literal(Literal::String(string)))
+        }
         _ => Ok(Blad::Symbol(token.to_owned())),
     }
 }

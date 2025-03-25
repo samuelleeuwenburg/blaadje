@@ -69,6 +69,13 @@ impl Blad {
         }
     }
 
+    pub fn get_string(&self) -> Result<&str, Error> {
+        match self {
+            Blad::Literal(Literal::String(s)) => Ok(s),
+            _ => Err(Error::ExpectedString(self.clone())),
+        }
+    }
+
     pub fn get_f32(&self) -> Result<f32, Error> {
         match self {
             Blad::Literal(Literal::F32(f)) => Ok(*f),
@@ -220,6 +227,7 @@ pub enum Keyword {
     Tail,
     Cast,
     Call,
+    Samples,
 }
 
 #[derive(Debug, Clone, PartialEq)]

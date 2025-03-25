@@ -4,7 +4,7 @@ use screech::{Module, PatchPoint, Patchbay, Signal};
 pub struct Clock {
     output: PatchPoint,
     frequency: Signal,
-    value: f32,
+    value: u32,
 }
 
 impl Clock {
@@ -12,7 +12,7 @@ impl Clock {
         Self {
             output,
             frequency: Signal::None,
-            value: 0.0,
+            value: 0,
         }
     }
 
@@ -37,14 +37,12 @@ impl Clock {
 
 impl<const SAMPLE_RATE: usize> Module<SAMPLE_RATE> for Clock {
     fn process<const P: usize>(&mut self, patchbay: &mut Patchbay<P>) {
-        self.value += (1.0 / SAMPLE_RATE as f32) * patchbay.get(self.frequency);
+        let step =
+            ((patchbay.get(self.frequency) * (u32::MAX as f32)) / SAMPLE_RATE as f32 / 2.0) as u32;
 
-        let output = if self.value >= 2.0 {
-            self.value -= 2.0;
-            1.0
-        } else {
-            0.0
-        };
+        self.value = self.value.wrapping_add(step);
+
+        let output = if self.value < step { 1.0 } else { 0.0 };
 
         patchbay.set(&mut self.output, output);
     }

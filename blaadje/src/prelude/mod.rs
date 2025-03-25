@@ -84,6 +84,9 @@ const SCREECH_PRELUDE: &'static str = "
     (let Filter.new (fn (id)
         (call (list :insert_module :filter id))))
 
+    (let Sample.new (fn (id)
+        (call (list :insert_module :sample id))))
+
     (let Clock.new (fn (id)
         (call (list :insert_module :clock id))))
 

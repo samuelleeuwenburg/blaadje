@@ -125,6 +125,7 @@ version = "0.1.0"
 dependencies = [
  "screech",
  "screech-macro",
+ "wavv",
 ]
 
 [[package]]
@@ -927,6 +928,12 @@ checksum = "1a05d73b933a847d6cccdda8f838a22ff101ad9bf93e33684f39c1f5f0eece3d"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "wavv"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "643a928d20e60c77f9cb721a120dc295da9f924702fd6a3199ac72381233f9f7"
 
 [[package]]
 name = "web-sys"

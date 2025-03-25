@@ -150,7 +150,7 @@ fn audio(
     mut producer: Caching<Arc<SharedRb<Heap<f32>>>, true, false>,
     channel: Arc<Mutex<Channel>>,
 ) -> Result<(), Box<dyn Error>> {
-    let mut engine = Engine::<48_000, 128, 128>::new();
+    let mut engine = Engine::<44_100, 128, 128>::new();
     let mut count = 0;
     let mut sample = 0.0;
 

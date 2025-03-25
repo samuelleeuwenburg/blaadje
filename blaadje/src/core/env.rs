@@ -1,4 +1,4 @@
-use super::{Blad, Channel, Error, Screech};
+use super::{Blad, Channel, Error};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};

@@ -1,4 +1,4 @@
-use super::modules::{Clock, Filter, Oscillator, Sequencer, Vca};
+use super::modules::{Clock, Filter, Oscillator, Sample, Sequencer, Vca};
 use crate::core::{args, args_min};
 use crate::{Blad, Channel, Error, Literal, Screech};
 use screech::{Module, Patchbay, Processor, Signal};
@@ -13,6 +13,7 @@ enum Modules {
     Clock(Clock),
     Sequencer(Sequencer),
     Filter(Filter),
+    Sample(Sample),
 }
 
 pub struct Engine<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usize> {
@@ -125,6 +126,7 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
                     Modules::Clock(m) => set_clock(m, &list[2..list.len()])?,
                     Modules::Sequencer(m) => set_sequencer(m, &list[2..list.len()])?,
                     Modules::Filter(m) => set_filter(m, &list[2..list.len()])?,
+                    Modules::Sample(m) => set_sample(m, &list[2..list.len()])?,
                 };
 
                 Ok(reply)
@@ -153,6 +155,7 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
                     Modules::Clock(m) => get_clock(m, &list[2..list.len()])?,
                     Modules::Sequencer(m) => get_sequencer(m, &list[2..list.len()])?,
                     Modules::Filter(m) => get_filter(m, &list[2..list.len()])?,
+                    Modules::Sample(m) => get_sample(m, &list[2..list.len()])?,
                 };
 
                 Ok(reply)
@@ -198,6 +201,7 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             ))),
             ":filter" => Some(Modules::Filter(Filter::new(self.patchbay.point().unwrap()))),
             ":vca" => Some(Modules::Vca(Vca::new(self.patchbay.point().unwrap()))),
+            ":sample" => Some(Modules::Sample(Sample::new(self.patchbay.point().unwrap()))),
             ":clock" => Some(Modules::Clock(Clock::new(self.patchbay.point().unwrap()))),
             ":sequencer" => Some(Modules::Sequencer(Sequencer::new(
                 self.patchbay.point().unwrap(),
@@ -208,10 +212,11 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
 
     fn module_to_atom(&self, id: usize) -> &str {
         match self.processor.get_module(id) {
+            Some(Modules::Clock(_)) => ":clock",
             Some(Modules::Filter(_)) => ":filter",
             Some(Modules::Oscillator(_)) => ":oscillator",
+            Some(Modules::Sample(_)) => ":sample",
             Some(Modules::Sequencer(_)) => ":sequencer",
-            Some(Modules::Clock(_)) => ":clock",
             Some(Modules::Vca(_)) => ":vca",
             None => ":none",
         }
@@ -283,6 +288,7 @@ fn get_oscillator(osc: &mut Oscillator, list: &[Blad]) -> Result<Blad, Error> {
 
     match property {
         ":frequency" => Ok(Blad::Screech(Screech::Signal(osc.get_frequency()))),
+        ":amplitude" => Ok(Blad::Screech(Screech::Signal(osc.get_amplitude()))),
         ":output" => Ok(Blad::Screech(Screech::Signal(osc.output()))),
         _ => Err(Error::InvalidProperty(property.into())),
     }
@@ -331,6 +337,14 @@ fn set_clock(m: &mut Clock, list: &[Blad]) -> Result<Blad, Error> {
         let value = &pair[1];
 
         match (property, value) {
+            (":frequency", Blad::Screech(Screech::Signal(signal))) => {
+                m.set_frequency(*signal);
+                Ok(Blad::Unit)
+            }
+            (":frequency", Blad::Literal(Literal::F32(frequency))) => {
+                m.set_frequency(Signal::Fixed(*frequency));
+                Ok(Blad::Unit)
+            }
             (":bpm", Blad::Screech(Screech::Signal(signal))) => {
                 m.set_bpm(*signal);
                 Ok(Blad::Unit)
@@ -435,6 +449,55 @@ fn set_filter(m: &mut Filter, list: &[Blad]) -> Result<Blad, Error> {
 }
 
 fn get_filter(m: &mut Filter, list: &[Blad]) -> Result<Blad, Error> {
+    args_min(list, 1)?;
+    let property = list[0].get_atom()?;
+
+    match property {
+        ":output" => Ok(Blad::Screech(Screech::Signal(m.output()))),
+        _ => Err(Error::InvalidProperty(property.into())),
+    }
+}
+
+fn set_sample(m: &mut Sample, list: &[Blad]) -> Result<Blad, Error> {
+    args_min(list, 1)?;
+
+    for b in list.iter() {
+        let pair = b.get_list()?;
+        let property = pair[0].get_atom()?;
+        let value = &pair[1];
+
+        match (property, value) {
+            (":trigger", Blad::Screech(Screech::Signal(signal))) => {
+                m.set_trigger(*signal);
+                Ok(Blad::Unit)
+            }
+            (":samples", Blad::List(s)) => {
+                let mut samples = vec![];
+
+                for sample in s {
+                    samples.push(sample.get_f32()?);
+                }
+
+                m.set_samples(samples);
+
+                Ok(Blad::Unit)
+            }
+            (":mode", Blad::Atom(string)) => {
+                match string.as_ref() {
+                    ":oneshot" => m.set_oneshot(),
+                    ":loop" => m.set_loop(),
+                    _ => m.set_oneshot(),
+                };
+                Ok(Blad::Unit)
+            }
+            (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
+        }?;
+    }
+
+    Ok(Blad::Unit)
+}
+
+fn get_sample(m: &mut Sample, list: &[Blad]) -> Result<Blad, Error> {
     args_min(list, 1)?;
     let property = list[0].get_atom()?;
 
