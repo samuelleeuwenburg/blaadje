@@ -1,3 +1,5 @@
+use crate::core::args_min;
+use crate::{Blad, Error, Screech};
 use screech::{Module, PatchPoint, Patchbay, Signal};
 
 /// VCA module that takes two inputs (signal and modulator) and has a single output.
@@ -16,18 +18,43 @@ impl Vca {
         }
     }
 
-    pub fn output(&self) -> Signal {
-        self.output.signal()
+    pub fn reset(&mut self) {
+        self.modulator = Signal::None;
+        self.input = Signal::None;
     }
 
-    pub fn set_input(&mut self, signal: Signal) -> &mut Self {
-        self.input = signal;
-        self
+    pub fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+
+        for b in list.iter() {
+            let pair = b.get_list()?;
+            let property = pair[0].get_atom()?;
+            let value = &pair[1];
+
+            match (property, value) {
+                (":input", Blad::Screech(Screech::Signal(signal))) => {
+                    self.input = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":modulator", Blad::Screech(Screech::Signal(signal))) => {
+                    self.modulator = *signal;
+                    Ok(Blad::Unit)
+                }
+                (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
+            }?;
+        }
+
+        Ok(Blad::Unit)
     }
 
-    pub fn set_modulator(&mut self, signal: Signal) -> &mut Self {
-        self.modulator = signal;
-        self
+    pub fn get(&self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+        let property = list[0].get_atom()?;
+
+        match property {
+            ":output" => Ok(Blad::Screech(Screech::Signal(self.output.signal()))),
+            _ => Err(Error::InvalidProperty(property.into())),
+        }
     }
 }
 

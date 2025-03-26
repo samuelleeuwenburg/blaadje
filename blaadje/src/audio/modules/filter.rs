@@ -1,3 +1,5 @@
+use crate::core::args_min;
+use crate::{Blad, Error, Literal, Screech};
 use screech::{Module, PatchPoint, Patchbay, Signal};
 
 const PI: f32 = 3.141;
@@ -27,23 +29,56 @@ impl Filter {
         }
     }
 
-    pub fn output(&self) -> Signal {
-        self.output.signal()
+    pub fn reset(&mut self) {
+        self.input = Signal::None;
+        self.frequency = Signal::None;
+        self.resonance = Signal::Fixed(1.8);
     }
 
-    pub fn set_input(&mut self, signal: Signal) -> &mut Self {
-        self.input = signal;
-        self
+    pub fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+
+        for b in list.iter() {
+            let pair = b.get_list()?;
+            let property = pair[0].get_atom()?;
+            let value = &pair[1];
+
+            match (property, value) {
+                (":input", Blad::Screech(Screech::Signal(signal))) => {
+                    self.input = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":frequency", Blad::Screech(Screech::Signal(signal))) => {
+                    self.frequency = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":frequency", Blad::Literal(Literal::F32(frequency))) => {
+                    self.frequency = Signal::Fixed(*frequency);
+                    Ok(Blad::Unit)
+                }
+                (":resonance", Blad::Screech(Screech::Signal(signal))) => {
+                    self.resonance = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":resonance", Blad::Literal(Literal::F32(q))) => {
+                    self.resonance = Signal::Fixed(*q);
+                    Ok(Blad::Unit)
+                }
+                (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
+            }?;
+        }
+
+        Ok(Blad::Unit)
     }
 
-    pub fn set_frequency(&mut self, frequency: Signal) -> &mut Self {
-        self.frequency = frequency;
-        self
-    }
+    pub fn get(&self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+        let property = list[0].get_atom()?;
 
-    pub fn set_resonance(&mut self, q: Signal) -> &mut Self {
-        self.resonance = q;
-        self
+        match property {
+            ":output" => Ok(Blad::Screech(Screech::Signal(self.output.signal()))),
+            _ => Err(Error::InvalidProperty(property.into())),
+        }
     }
 }
 

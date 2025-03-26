@@ -1,6 +1,6 @@
 use super::modules::{Clock, Filter, Oscillator, Sample, Sequencer, Vca};
 use crate::core::{args, args_min};
-use crate::{Blad, Channel, Error, Literal, Screech};
+use crate::{Blad, Channel, Error, Screech};
 use screech::{Module, Patchbay, Processor, Signal};
 use screech_macro::modularize;
 use std::collections::HashMap;
@@ -14,6 +14,41 @@ enum Modules {
     Sequencer(Sequencer),
     Filter(Filter),
     Sample(Sample),
+}
+
+impl Modules {
+    fn reset(&mut self) {
+        match self {
+            Modules::Oscillator(m) => m.reset(),
+            Modules::Vca(m) => m.reset(),
+            Modules::Clock(m) => m.reset(),
+            Modules::Sequencer(m) => m.reset(),
+            Modules::Filter(m) => m.reset(),
+            Modules::Sample(m) => m.reset(),
+        }
+    }
+
+    fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
+        match self {
+            Modules::Oscillator(m) => m.set(list),
+            Modules::Vca(m) => m.set(list),
+            Modules::Clock(m) => m.set(list),
+            Modules::Sequencer(m) => m.set(list),
+            Modules::Filter(m) => m.set(list),
+            Modules::Sample(m) => m.set(list),
+        }
+    }
+
+    fn get(&self, list: &[Blad]) -> Result<Blad, Error> {
+        match self {
+            Modules::Oscillator(m) => m.get(list),
+            Modules::Vca(m) => m.get(list),
+            Modules::Clock(m) => m.get(list),
+            Modules::Sequencer(m) => m.get(list),
+            Modules::Filter(m) => m.get(list),
+            Modules::Sample(m) => m.get(list),
+        }
+    }
 }
 
 pub struct Engine<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usize> {
@@ -61,17 +96,23 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             ":insert_module" => {
                 args(&list, 3)?;
                 let atom = &list[1].get_atom()?;
-                let atom_id = &list[2].get_atom()?;
+                let string_id = &list[2].get_string()?;
 
-                let module = self
-                    .atom_to_module(atom)
-                    .ok_or(Error::UnknownModule(atom.to_string()))?;
+                let id = match self.module_ids.get(*string_id) {
+                    Some(id) => {
+                        let module = self.processor.get_module_mut(*id).unwrap();
 
-                let id = match self.module_ids.get(*atom_id) {
-                    Some(id) => *id,
+                        module.reset();
+
+                        *id
+                    }
                     None => {
+                        let module = self
+                            .atom_to_module(atom)
+                            .ok_or(Error::UnknownModule(atom.to_string()))?;
+
                         let id = self.processor.insert_module(module).unwrap();
-                        self.module_ids.insert(atom_id.to_string(), id);
+                        self.module_ids.insert(string_id.to_string(), id);
                         id
                     }
                 };
@@ -106,59 +147,27 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             ":set" => {
                 args_min(&list, 3)?;
 
-                let id = match &list[1] {
-                    Blad::Screech(Screech::Module(id)) => Ok(id),
-                    Blad::Atom(atom_id) => self
-                        .module_ids
-                        .get(atom_id)
-                        .ok_or(Error::ModuleAtomNotFound(atom_id.to_string())),
-                    _ => Err(Error::ExpectedScreechModule(list[1].clone())),
-                }?;
+                let id = &list[1].get_module()?;
 
                 let module = self
                     .processor
                     .get_module_mut(*id)
                     .ok_or(Error::ModuleNotFound(*id))?;
 
-                let reply = match module {
-                    Modules::Oscillator(m) => set_oscillator(m, &list[2..list.len()])?,
-                    Modules::Vca(m) => set_vca(m, &list[2..list.len()])?,
-                    Modules::Clock(m) => set_clock(m, &list[2..list.len()])?,
-                    Modules::Sequencer(m) => set_sequencer(m, &list[2..list.len()])?,
-                    Modules::Filter(m) => set_filter(m, &list[2..list.len()])?,
-                    Modules::Sample(m) => set_sample(m, &list[2..list.len()])?,
-                };
-
-                Ok(reply)
+                module.set(&list[2..list.len()])
             }
 
             ":get" => {
                 args_min(&list, 3)?;
 
-                let id = match &list[1] {
-                    Blad::Screech(Screech::Module(id)) => Ok(id),
-                    Blad::Atom(atom_id) => self
-                        .module_ids
-                        .get(atom_id)
-                        .ok_or(Error::ModuleAtomNotFound(atom_id.to_string())),
-                    _ => Err(Error::ExpectedScreechModule(list[1].clone())),
-                }?;
+                let id = &list[1].get_module()?;
 
                 let module = self
                     .processor
                     .get_module_mut(*id)
                     .ok_or(Error::ModuleNotFound(*id))?;
 
-                let reply = match module {
-                    Modules::Oscillator(m) => get_oscillator(m, &list[2..list.len()])?,
-                    Modules::Vca(m) => get_vca(m, &list[2..list.len()])?,
-                    Modules::Clock(m) => get_clock(m, &list[2..list.len()])?,
-                    Modules::Sequencer(m) => get_sequencer(m, &list[2..list.len()])?,
-                    Modules::Filter(m) => get_filter(m, &list[2..list.len()])?,
-                    Modules::Sample(m) => get_sample(m, &list[2..list.len()])?,
-                };
-
-                Ok(reply)
+                module.get(&list[2..list.len()])
             }
 
             ":output_left" => {
@@ -205,6 +214,8 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             ":clock" => Some(Modules::Clock(Clock::new(self.patchbay.point().unwrap()))),
             ":sequencer" => Some(Modules::Sequencer(Sequencer::new(
                 self.patchbay.point().unwrap(),
+                self.patchbay.point().unwrap(),
+                self.patchbay.point().unwrap(),
             ))),
             _ => None,
         }
@@ -237,272 +248,5 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
         }
 
         (left, right)
-    }
-}
-
-fn set_oscillator(osc: &mut Oscillator, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-
-    for b in list.iter() {
-        let pair = b.get_list()?;
-        let property = pair[0].get_atom()?;
-        let value = &pair[1];
-
-        match (property, value) {
-            (":frequency", Blad::Literal(Literal::F32(f))) => {
-                osc.set_frequency(Signal::Fixed(*f));
-                Ok(Blad::Unit)
-            }
-            (":frequency", Blad::Screech(Screech::Signal(signal))) => {
-                osc.set_frequency(*signal);
-                Ok(Blad::Unit)
-            }
-            (":amplitude", Blad::Literal(Literal::F32(f))) => {
-                osc.set_amplitude(Signal::Fixed(*f));
-                Ok(Blad::Unit)
-            }
-            (":amplitude", Blad::Screech(Screech::Signal(signal))) => {
-                osc.set_amplitude(*signal);
-                Ok(Blad::Unit)
-            }
-            (":waveshape", Blad::Atom(string)) => {
-                match string.as_ref() {
-                    ":pulse" => osc.output_pulse(0.5),
-                    ":sine" => osc.output_sine(),
-                    ":triangle" => osc.output_triangle(),
-                    ":saw" => osc.output_saw(),
-                    _ => osc.output_sine(),
-                };
-                Ok(Blad::Unit)
-            }
-            (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
-        }?;
-    }
-
-    Ok(Blad::Unit)
-}
-
-fn get_oscillator(osc: &mut Oscillator, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-    let property = list[0].get_atom()?;
-
-    match property {
-        ":frequency" => Ok(Blad::Screech(Screech::Signal(osc.get_frequency()))),
-        ":amplitude" => Ok(Blad::Screech(Screech::Signal(osc.get_amplitude()))),
-        ":output" => Ok(Blad::Screech(Screech::Signal(osc.output()))),
-        _ => Err(Error::InvalidProperty(property.into())),
-    }
-}
-
-fn set_vca(m: &mut Vca, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-
-    for b in list.iter() {
-        let pair = b.get_list()?;
-        let property = pair[0].get_atom()?;
-        let value = &pair[1];
-
-        match (property, value) {
-            (":input", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_input(*signal);
-                Ok(Blad::Unit)
-            }
-            (":modulator", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_modulator(*signal);
-                Ok(Blad::Unit)
-            }
-            (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
-        }?;
-    }
-
-    Ok(Blad::Unit)
-}
-
-fn get_vca(vca: &mut Vca, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-    let property = list[0].get_atom()?;
-
-    match property {
-        ":output" => Ok(Blad::Screech(Screech::Signal(vca.output()))),
-        _ => Err(Error::InvalidProperty(property.into())),
-    }
-}
-
-fn set_clock(m: &mut Clock, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-
-    for b in list.iter() {
-        let pair = b.get_list()?;
-        let property = pair[0].get_atom()?;
-        let value = &pair[1];
-
-        match (property, value) {
-            (":frequency", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_frequency(*signal);
-                Ok(Blad::Unit)
-            }
-            (":frequency", Blad::Literal(Literal::F32(frequency))) => {
-                m.set_frequency(Signal::Fixed(*frequency));
-                Ok(Blad::Unit)
-            }
-            (":bpm", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_bpm(*signal);
-                Ok(Blad::Unit)
-            }
-            (":bpm", Blad::Literal(Literal::F32(bpm))) => {
-                m.set_bpm(Signal::Fixed(*bpm));
-                Ok(Blad::Unit)
-            }
-            (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
-        }?;
-    }
-
-    Ok(Blad::Unit)
-}
-
-fn get_clock(clock: &mut Clock, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-    let property = list[0].get_atom()?;
-
-    match property {
-        ":output" => Ok(Blad::Screech(Screech::Signal(clock.output()))),
-        ":frequency" => Ok(Blad::Screech(Screech::Signal(clock.get_frequency()))),
-        _ => Err(Error::InvalidProperty(property.into())),
-    }
-}
-
-fn set_sequencer(m: &mut Sequencer, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-
-    for b in list.iter() {
-        let pair = b.get_list()?;
-        let property = pair[0].get_atom()?;
-        let value = &pair[1];
-
-        match (property, value) {
-            (":clock", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_clock(*signal);
-                Ok(Blad::Unit)
-            }
-            (":steps", Blad::List(atoms)) => {
-                let mut steps = vec![];
-
-                for atom in atoms {
-                    steps.push(atom.to_pitch()?);
-                }
-
-                m.set_steps(steps);
-
-                Ok(Blad::Unit)
-            }
-            (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
-        }?;
-    }
-
-    Ok(Blad::Unit)
-}
-
-fn get_sequencer(sequencer: &mut Sequencer, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-    let property = list[0].get_atom()?;
-
-    match property {
-        ":frequency_output" => Ok(Blad::Screech(Screech::Signal(sequencer.frequency_output()))),
-        _ => Err(Error::InvalidProperty(property.into())),
-    }
-}
-
-fn set_filter(m: &mut Filter, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-
-    for b in list.iter() {
-        let pair = b.get_list()?;
-        let property = pair[0].get_atom()?;
-        let value = &pair[1];
-
-        match (property, value) {
-            (":input", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_input(*signal);
-                Ok(Blad::Unit)
-            }
-            (":frequency", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_frequency(*signal);
-                Ok(Blad::Unit)
-            }
-            (":frequency", Blad::Literal(Literal::F32(frequency))) => {
-                m.set_frequency(Signal::Fixed(*frequency));
-                Ok(Blad::Unit)
-            }
-            (":resonance", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_resonance(*signal);
-                Ok(Blad::Unit)
-            }
-            (":resonance", Blad::Literal(Literal::F32(q))) => {
-                m.set_resonance(Signal::Fixed(*q));
-                Ok(Blad::Unit)
-            }
-            (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
-        }?;
-    }
-
-    Ok(Blad::Unit)
-}
-
-fn get_filter(m: &mut Filter, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-    let property = list[0].get_atom()?;
-
-    match property {
-        ":output" => Ok(Blad::Screech(Screech::Signal(m.output()))),
-        _ => Err(Error::InvalidProperty(property.into())),
-    }
-}
-
-fn set_sample(m: &mut Sample, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-
-    for b in list.iter() {
-        let pair = b.get_list()?;
-        let property = pair[0].get_atom()?;
-        let value = &pair[1];
-
-        match (property, value) {
-            (":trigger", Blad::Screech(Screech::Signal(signal))) => {
-                m.set_trigger(*signal);
-                Ok(Blad::Unit)
-            }
-            (":samples", Blad::List(s)) => {
-                let mut samples = vec![];
-
-                for sample in s {
-                    samples.push(sample.get_f32()?);
-                }
-
-                m.set_samples(samples);
-
-                Ok(Blad::Unit)
-            }
-            (":mode", Blad::Atom(string)) => {
-                match string.as_ref() {
-                    ":oneshot" => m.set_oneshot(),
-                    ":loop" => m.set_loop(),
-                    _ => m.set_oneshot(),
-                };
-                Ok(Blad::Unit)
-            }
-            (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
-        }?;
-    }
-
-    Ok(Blad::Unit)
-}
-
-fn get_sample(m: &mut Sample, list: &[Blad]) -> Result<Blad, Error> {
-    args_min(list, 1)?;
-    let property = list[0].get_atom()?;
-
-    match property {
-        ":output" => Ok(Blad::Screech(Screech::Signal(m.output()))),
-        _ => Err(Error::InvalidProperty(property.into())),
     }
 }

@@ -1,0 +1,32 @@
+(let clock (Clock.new "c1"))
+(set clock :bpm 340.0)
+
+(let grid (fn (id trigger rows)
+    (map rows (fn (row) (do
+        (let sample_path (nth row 0))
+        (let triggers (nth row 1))
+        (let row_id (append id sample_path))
+
+        (let seq (Sequencer.new (append row_id "-seq")))
+        (set seq :trigger trigger)
+        (set seq :triggers triggers)
+
+        (let sample (Sample.new (append row_id "-sample")))
+        (set sample :samples (samples sample_path))
+        (set sample :trigger (get seq :trigger_output))
+
+        sample
+    )))
+))
+
+(let k1 (grid
+    "k1"
+    (get clock :output)
+    (list
+        '("./samples/kick.wav"  (1 0 1 0 0 0 0 0 1 1 0 0 0 0 0 0))
+        '("./samples/snare.wav" (0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0))
+        '("./samples/hh.wav"    (0 1 0 1 1 0 1 1 1 1 1 1 1 1 1 1))
+    )
+))
+
+(map k1 (fn (s) (output (get s :output))))

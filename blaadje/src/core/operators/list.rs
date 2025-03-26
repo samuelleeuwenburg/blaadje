@@ -1,5 +1,5 @@
 use super::super::{args, eval};
-use crate::{Blad, Environment, Error};
+use crate::{Blad, Environment, Error, Literal};
 use std::sync::{Arc, Mutex};
 
 pub fn process_list(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
@@ -74,13 +74,20 @@ pub fn process_append(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Bla
     let item = eval(&list[0], env.clone())?;
     let items = eval(&list[1], env.clone())?;
 
-    match items {
-        Blad::Unit => Ok(Blad::List(vec![item])),
-        Blad::List(l) => {
+    match (&item, &items) {
+        (Blad::Literal(Literal::String(a)), Blad::Literal(Literal::String(b))) => {
+            let mut result = a.to_string();
+            result.push_str(b);
+
+            Ok(Blad::Literal(Literal::String(result)))
+        }
+        (_, Blad::List(l)) => {
             let mut new_items = l.clone();
             new_items.push(item);
+
             Ok(Blad::List(new_items))
         }
+        (_, Blad::Unit) => Ok(Blad::List(vec![item])),
         _ => Err(Error::ExpectedList(items)),
     }
 }
@@ -189,6 +196,14 @@ mod tests {
                 Blad::Literal(Literal::Usize(4)),
                 Blad::Literal(Literal::Usize(1)),
             ])
+        );
+    }
+
+    #[test]
+    fn append_string() {
+        assert_eq!(
+            run("(append \"foo\" \"bar\")").unwrap(),
+            Blad::Literal(Literal::String("foobar".to_string())),
         );
     }
 

@@ -1,3 +1,5 @@
+use crate::core::args_min;
+use crate::{Blad, Error, Screech};
 use screech::{Module, PatchPoint, Patchbay, Signal};
 
 enum Mode {
@@ -26,29 +28,58 @@ impl Sample {
         }
     }
 
-    pub fn set_samples(&mut self, samples: Vec<f32>) -> &mut Self {
-        self.samples = samples;
-        self.position = 0;
-        self
-    }
-
-    pub fn set_trigger(&mut self, trigger: Signal) -> &mut Self {
-        self.trigger = trigger;
-        self
-    }
-
-    pub fn set_oneshot(&mut self) -> &mut Self {
+    pub fn reset(&mut self) {
+        self.trigger = Signal::None;
         self.mode = Mode::OneShot;
-        self
     }
 
-    pub fn set_loop(&mut self) -> &mut Self {
-        self.mode = Mode::Loop;
-        self
+    pub fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+
+        for b in list.iter() {
+            let pair = b.get_list()?;
+            let property = pair[0].get_atom()?;
+            let value = &pair[1];
+
+            match (property, value) {
+                (":trigger", Blad::Screech(Screech::Signal(signal))) => {
+                    self.trigger = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":samples", Blad::List(s)) => {
+                    let mut samples = vec![];
+
+                    for sample in s {
+                        samples.push(sample.get_f32()?);
+                    }
+
+                    self.samples = samples;
+
+                    Ok(Blad::Unit)
+                }
+                (":mode", Blad::Atom(string)) => {
+                    match string.as_ref() {
+                        ":oneshot" => self.mode = Mode::OneShot,
+                        ":loop" => self.mode = Mode::Loop,
+                        _ => self.mode = Mode::OneShot,
+                    };
+                    Ok(Blad::Unit)
+                }
+                (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
+            }?;
+        }
+
+        Ok(Blad::Unit)
     }
 
-    pub fn output(&self) -> Signal {
-        self.output.signal()
+    pub fn get(&self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+        let property = list[0].get_atom()?;
+
+        match property {
+            ":output" => Ok(Blad::Screech(Screech::Signal(self.output.signal()))),
+            _ => Err(Error::InvalidProperty(property.into())),
+        }
     }
 }
 

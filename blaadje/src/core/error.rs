@@ -25,7 +25,7 @@ pub enum Error {
     InvalidNote(String),
     InvalidProperty(String),
     InvalidToken(String),
-    ModuleAtomNotFound(String),
+    ModuleIdNotFound(String),
     ModuleNotFound(usize),
     ParseError(usize),
     UndefinedOperator(String),

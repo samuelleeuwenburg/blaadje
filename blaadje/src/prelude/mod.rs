@@ -23,6 +23,13 @@ const PRELUDE: &'static str = "
         (f items 0)
     )))
 
+    (let nth (fn (items index)
+        (if (<= index 0)
+            (head items)
+            (nth (tail items) (- index 1))
+        )
+    ))
+
     (let fold (fn (items initial_value function) (do
         (if (empty? items)
             initial_value
@@ -97,7 +104,7 @@ const SCREECH_PRELUDE: &'static str = "
         (let m (module id))
         (map
             properties
-            (fn (tuple) (set m (head tuple) (head (tail tuple))))
+            (fn (tuple) (set m (nth tuple 0) (nth tuple 1)))
         )
         m
     )))
@@ -182,6 +189,21 @@ mod tests {
             run("(length '(1 2 3 4))").unwrap(),
             Blad::Literal(Literal::Usize(4)),
         );
+    }
+
+    #[test]
+    fn nth() {
+        assert_eq!(
+            run("(nth '(1 2 3 4) 0)").unwrap(),
+            Blad::Literal(Literal::Usize(1)),
+        );
+
+        assert_eq!(
+            run("(nth '(1 2 3 4) 2)").unwrap(),
+            Blad::Literal(Literal::Usize(3)),
+        );
+
+        assert_eq!(run("(nth '(1 2 3 4) 100)").unwrap(), Blad::Unit);
     }
 
     #[test]

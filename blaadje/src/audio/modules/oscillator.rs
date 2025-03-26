@@ -1,3 +1,5 @@
+use crate::core::args_min;
+use crate::{Blad, Error, Literal, Screech};
 use screech::{Module, PatchPoint, Patchbay, Signal};
 
 const PI: f32 = 3.141;
@@ -9,7 +11,6 @@ enum Waveform {
     Pulse(f32),
 }
 
-/// Basic oscillator with multiple waveshapes
 pub struct Oscillator {
     wave_shape: Waveform,
     frequency: Signal,
@@ -29,46 +30,62 @@ impl Oscillator {
         }
     }
 
-    pub fn output(&self) -> Signal {
-        self.output.signal()
-    }
-
-    pub fn set_frequency(&mut self, frequency: Signal) -> &mut Self {
-        self.frequency = frequency;
-        self
-    }
-
-    pub fn get_frequency(&self) -> Signal {
-        self.frequency
-    }
-
-    pub fn set_amplitude(&mut self, amplitude: Signal) -> &mut Self {
-        self.amplitude = amplitude;
-        self
-    }
-
-    pub fn get_amplitude(&self) -> Signal {
-        self.amplitude
-    }
-
-    pub fn output_sine(&mut self) -> &mut Self {
+    pub fn reset(&mut self) {
         self.wave_shape = Waveform::Sine;
-        self
+        self.frequency = Signal::Fixed(220.0);
+        self.amplitude = Signal::Fixed(0.8);
     }
 
-    pub fn output_saw(&mut self) -> &mut Self {
-        self.wave_shape = Waveform::Saw;
-        self
+    pub fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+
+        for b in list.iter() {
+            let pair = b.get_list()?;
+            let property = pair[0].get_atom()?;
+            let value = &pair[1];
+
+            match (property, value) {
+                (":frequency", Blad::Literal(Literal::F32(f))) => {
+                    self.frequency = Signal::Fixed(*f);
+                    Ok(Blad::Unit)
+                }
+                (":frequency", Blad::Screech(Screech::Signal(signal))) => {
+                    self.frequency = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":amplitude", Blad::Literal(Literal::F32(f))) => {
+                    self.amplitude = Signal::Fixed(*f);
+                    Ok(Blad::Unit)
+                }
+                (":amplitude", Blad::Screech(Screech::Signal(signal))) => {
+                    self.amplitude = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":waveshape", Blad::Atom(string)) => {
+                    match string.as_ref() {
+                        ":pulse" => self.wave_shape = Waveform::Pulse(0.5),
+                        ":sine" => self.wave_shape = Waveform::Sine,
+                        ":triangle" => self.wave_shape = Waveform::Triangle,
+                        ":saw" => self.wave_shape = Waveform::Saw,
+                        _ => self.wave_shape = Waveform::Sine,
+                    };
+                    Ok(Blad::Unit)
+                }
+                (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
+            }?;
+        }
+
+        Ok(Blad::Unit)
     }
 
-    pub fn output_triangle(&mut self) -> &mut Self {
-        self.wave_shape = Waveform::Triangle;
-        self
-    }
+    pub fn get(&self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+        let property = list[0].get_atom()?;
 
-    pub fn output_pulse(&mut self, duty_cycle: f32) -> &mut Self {
-        self.wave_shape = Waveform::Pulse(duty_cycle);
-        self
+        match property {
+            ":output" => Ok(Blad::Screech(Screech::Signal(self.output.signal()))),
+            _ => Err(Error::InvalidProperty(property.into())),
+        }
     }
 }
 
