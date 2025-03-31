@@ -20,33 +20,25 @@ pub fn init_stream(
         .expect("failed to find output device");
 
     let config = device.default_output_config().unwrap();
+    let supported_buffer_size = config.buffer_size();
     // let sample_format = config.sample_format();
-    let config: cpal::StreamConfig = config.into();
+    let mut config: cpal::StreamConfig = config.into();
 
     // let sample_rate = config.sample_rate.0 as f32;
     // let channels = config.channels as usize;
-
-    // Create a delay in case the input and output devices aren't synced.
-    let latency_frames = (150.0 / 1_000.0) * config.sample_rate.0 as f32;
-    let latency_samples = latency_frames as usize * config.channels as usize;
+    let buffer_size = 1028;
+    config.buffer_size = cpal::BufferSize::Fixed(buffer_size as u32);
 
     // The buffer to share samples
-    let ring = HeapRb::<f32>::new(latency_samples * 2);
+    let ring = HeapRb::<f32>::new(buffer_size * 2);
     let (producer, mut consumer) = ring.split();
 
     let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-        let mut input_fell_behind = false;
         for sample in data {
             *sample = match consumer.try_pop() {
                 Some(s) => s,
-                None => {
-                    input_fell_behind = true;
-                    0.0
-                }
+                None => 0.0,
             };
-        }
-        if input_fell_behind {
-            // eprintln!("input stream fell behind: try increasing latency");
         }
     };
 

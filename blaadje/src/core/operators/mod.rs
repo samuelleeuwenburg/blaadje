@@ -6,6 +6,7 @@ mod lambda;
 mod list;
 mod macros;
 mod math;
+mod string;
 mod variables;
 
 pub use channel::{process_call, process_cast};
@@ -18,4 +19,5 @@ pub use list::{
 };
 pub use macros::{process_macro, process_macro_call};
 pub use math::{process_add, process_subtract};
+pub use string::process_string;
 pub use variables::process_let;

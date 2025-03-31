@@ -51,6 +51,18 @@ const PRELUDE: &'static str = "
             (if (f x) (append x xs) xs)
         ))
     ))
+
+    (let enumerate (fn (items) (do
+        (let result (fold items '( () 0) (fn (acc item) (do
+            (let items (nth acc 0))
+            (let index (nth acc 1))
+            (list
+                (append (list index item) items)
+                (+ index 1)
+            )
+        ))))
+        (head result)
+    )))
 ";
 
 const SCREECH_PRELUDE: &'static str = "
@@ -84,6 +96,9 @@ const SCREECH_PRELUDE: &'static str = "
 
     (let Osc.new (fn (id)
         (call (list :insert_module :oscillator id))))
+
+    (let Midi.new (fn (id)
+        (call (list :insert_module :midi id))))
 
     (let Vca.new (fn (id)
         (call (list :insert_module :vca id))))
@@ -234,6 +249,31 @@ mod tests {
             Blad::List(vec![
                 Blad::Literal(Literal::Usize(8)),
                 Blad::Literal(Literal::Usize(6)),
+            ])
+        );
+    }
+
+    #[test]
+    fn enumerate() {
+        assert_eq!(
+            run("(enumerate '(8 2 6 3))").unwrap(),
+            Blad::List(vec![
+                Blad::List(vec![
+                    Blad::Literal(Literal::Usize(0)),
+                    Blad::Literal(Literal::Usize(8)),
+                ]),
+                Blad::List(vec![
+                    Blad::Literal(Literal::Usize(1)),
+                    Blad::Literal(Literal::Usize(2)),
+                ]),
+                Blad::List(vec![
+                    Blad::Literal(Literal::Usize(2)),
+                    Blad::Literal(Literal::Usize(6)),
+                ]),
+                Blad::List(vec![
+                    Blad::Literal(Literal::Usize(3)),
+                    Blad::Literal(Literal::Usize(3)),
+                ]),
             ])
         );
     }

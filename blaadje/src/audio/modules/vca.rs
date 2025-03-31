@@ -1,5 +1,5 @@
 use crate::core::args_min;
-use crate::{Blad, Error, Screech};
+use crate::{Blad, Error, Literal, Screech};
 use screech::{Module, PatchPoint, Patchbay, Signal};
 
 /// VCA module that takes two inputs (signal and modulator) and has a single output.
@@ -38,6 +38,10 @@ impl Vca {
                 }
                 (":modulator", Blad::Screech(Screech::Signal(signal))) => {
                     self.modulator = *signal;
+                    Ok(Blad::Unit)
+                }
+                (":modulator", Blad::Literal(Literal::F32(gain))) => {
+                    self.modulator = Signal::Fixed(*gain);
                     Ok(Blad::Unit)
                 }
                 (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),

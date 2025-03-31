@@ -24,7 +24,7 @@ impl Oscillator {
         Oscillator {
             wave_shape: Waveform::Sine,
             frequency: Signal::Fixed(220.0),
-            amplitude: Signal::Fixed(0.8),
+            amplitude: Signal::Fixed(0.1),
             output,
             value: 0.0,
         }
@@ -33,7 +33,7 @@ impl Oscillator {
     pub fn reset(&mut self) {
         self.wave_shape = Waveform::Sine;
         self.frequency = Signal::Fixed(220.0);
-        self.amplitude = Signal::Fixed(0.8);
+        self.amplitude = Signal::Fixed(0.1);
     }
 
     pub fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
@@ -98,7 +98,6 @@ impl<const SAMPLE_RATE: usize> Module<SAMPLE_RATE> for Oscillator {
         // Ramp up from -1.0 to 1.0 based on the set `frequency`
         // then use this value to convert to the specific waveforms
         self.value += (1.0 / SAMPLE_RATE as f32) * patchbay.get(self.frequency);
-
         // Wrap around
         if self.value >= 1.0 {
             self.value -= 2.0;

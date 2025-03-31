@@ -1,4 +1,4 @@
-use super::modules::{Clock, Filter, Oscillator, Sample, Sequencer, Vca};
+use super::modules::{Clock, Filter, Midi, Oscillator, Sample, Sequencer, Vca};
 use crate::core::{args, args_min};
 use crate::{Blad, Channel, Error, Screech};
 use screech::{Module, Patchbay, Processor, Signal};
@@ -8,45 +8,49 @@ use std::sync::{Arc, Mutex};
 
 #[modularize]
 enum Modules {
-    Oscillator(Oscillator),
-    Vca(Vca),
     Clock(Clock),
-    Sequencer(Sequencer),
     Filter(Filter),
+    Midi(Midi),
+    Oscillator(Oscillator),
     Sample(Sample),
+    Sequencer(Sequencer),
+    Vca(Vca),
 }
 
 impl Modules {
     fn reset(&mut self) {
         match self {
-            Modules::Oscillator(m) => m.reset(),
-            Modules::Vca(m) => m.reset(),
             Modules::Clock(m) => m.reset(),
-            Modules::Sequencer(m) => m.reset(),
             Modules::Filter(m) => m.reset(),
+            Modules::Midi(m) => m.reset(),
+            Modules::Oscillator(m) => m.reset(),
             Modules::Sample(m) => m.reset(),
+            Modules::Sequencer(m) => m.reset(),
+            Modules::Vca(m) => m.reset(),
         }
     }
 
     fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
         match self {
-            Modules::Oscillator(m) => m.set(list),
-            Modules::Vca(m) => m.set(list),
             Modules::Clock(m) => m.set(list),
-            Modules::Sequencer(m) => m.set(list),
             Modules::Filter(m) => m.set(list),
+            Modules::Midi(m) => m.set(list),
+            Modules::Oscillator(m) => m.set(list),
             Modules::Sample(m) => m.set(list),
+            Modules::Sequencer(m) => m.set(list),
+            Modules::Vca(m) => m.set(list),
         }
     }
 
     fn get(&self, list: &[Blad]) -> Result<Blad, Error> {
         match self {
-            Modules::Oscillator(m) => m.get(list),
-            Modules::Vca(m) => m.get(list),
             Modules::Clock(m) => m.get(list),
-            Modules::Sequencer(m) => m.get(list),
             Modules::Filter(m) => m.get(list),
+            Modules::Midi(m) => m.get(list),
+            Modules::Oscillator(m) => m.get(list),
             Modules::Sample(m) => m.get(list),
+            Modules::Sequencer(m) => m.get(list),
+            Modules::Vca(m) => m.get(list),
         }
     }
 }
@@ -57,6 +61,7 @@ pub struct Engine<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_
     processor: Processor<SAMPLE_RATE, NUM_MODULES, Modules>,
     outputs_left: Vec<Signal>,
     outputs_right: Vec<Signal>,
+    midi_buffer: Arc<Mutex<Vec<u32>>>,
 }
 
 impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usize>
@@ -69,6 +74,7 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             processor: Processor::empty(),
             outputs_left: Vec::new(),
             outputs_right: Vec::new(),
+            midi_buffer: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -93,6 +99,15 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
         let operator = &list[0].get_atom()?;
 
         match operator.as_ref() {
+            ":midi" => {
+                args(&list, 2)?;
+                let message = &list[1].get_usize()?;
+
+                let mut midi_buffer = self.midi_buffer.lock().unwrap();
+                midi_buffer.push(*message as u32);
+
+                Ok(Blad::Unit)
+            }
             ":insert_module" => {
                 args(&list, 3)?;
                 let atom = &list[1].get_atom()?;
@@ -212,6 +227,22 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             ":vca" => Some(Modules::Vca(Vca::new(self.patchbay.point().unwrap()))),
             ":sample" => Some(Modules::Sample(Sample::new(self.patchbay.point().unwrap()))),
             ":clock" => Some(Modules::Clock(Clock::new(self.patchbay.point().unwrap()))),
+            ":midi" => {
+                let voices = 8;
+                let frequencies = (0..voices)
+                    .map(|_| self.patchbay.point().unwrap())
+                    .collect();
+                let gates = (0..voices)
+                    .map(|_| self.patchbay.point().unwrap())
+                    .collect();
+
+                Some(Modules::Midi(Midi::new(
+                    frequencies,
+                    gates,
+                    self.patchbay.point().unwrap(),
+                    self.midi_buffer.clone(),
+                )))
+            }
             ":sequencer" => Some(Modules::Sequencer(Sequencer::new(
                 self.patchbay.point().unwrap(),
                 self.patchbay.point().unwrap(),
@@ -225,6 +256,7 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
         match self.processor.get_module(id) {
             Some(Modules::Clock(_)) => ":clock",
             Some(Modules::Filter(_)) => ":filter",
+            Some(Modules::Midi(_)) => ":midi",
             Some(Modules::Oscillator(_)) => ":oscillator",
             Some(Modules::Sample(_)) => ":sample",
             Some(Modules::Sequencer(_)) => ":sequencer",
@@ -235,6 +267,10 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
 
     pub fn next_samples(&mut self) -> (f32, f32) {
         self.processor.process_modules(&mut self.patchbay);
+
+        {
+            self.midi_buffer.lock().unwrap().clear();
+        }
 
         let mut left = 0.0;
         let mut right = 0.0;

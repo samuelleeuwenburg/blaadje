@@ -32,6 +32,7 @@ pub enum Error {
     UndefinedSymbol(String),
     UnexpectedToken(String),
     UnknownModule(String),
+    UnableToConvertToString(Blad),
     UnsupportedNumericType(String),
     WavError,
 }

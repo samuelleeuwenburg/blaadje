@@ -85,6 +85,7 @@ fn parse_token(token: &str) -> Result<Blad, Error> {
         "list" => Ok(Blad::Keyword(Keyword::List)),
         "macro" => Ok(Blad::Keyword(Keyword::Macro)),
         "samples" => Ok(Blad::Keyword(Keyword::Samples)),
+        "string" => Ok(Blad::Keyword(Keyword::String)),
         "tail" => Ok(Blad::Keyword(Keyword::Tail)),
         s if s.starts_with(':') => Ok(Blad::Atom(token.to_owned())),
         s if s.starts_with('"') && s.ends_with('"') => {

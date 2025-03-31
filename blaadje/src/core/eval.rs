@@ -2,7 +2,7 @@ use super::operators::{
     process_add, process_append, process_call, process_cast, process_cons, process_do,
     process_equal, process_greater_than, process_head, process_if, process_lambda,
     process_lambda_call, process_less_than, process_let, process_list, process_macro,
-    process_macro_call, process_samples, process_subtract, process_tail,
+    process_macro_call, process_samples, process_string, process_subtract, process_tail,
 };
 use super::{Blad, Environment, Error, Keyword};
 use std::sync::{Arc, Mutex};
@@ -45,6 +45,7 @@ pub fn eval(program: &Blad, env: Arc<Mutex<Environment>>) -> Result<Blad, Error>
                     Keyword::List => process_list(rest, env.clone()),
                     Keyword::Macro => process_macro(rest, env.clone()),
                     Keyword::Samples => process_samples(rest, env.clone()),
+                    Keyword::String => process_string(rest, env.clone()),
                     Keyword::Subtract => process_subtract(rest, env.clone()),
                     Keyword::Tail => process_tail(rest, env.clone()),
                 },
