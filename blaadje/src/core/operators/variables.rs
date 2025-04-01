@@ -5,14 +5,39 @@ use std::sync::{Arc, Mutex};
 pub fn process_let(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     args(list, 2)?;
 
-    let key = &list[0].get_symbol()?;
-    let value = &list[1];
+    let set = &list[0];
+    let result = eval(&list[1], env.clone())?;
 
-    let result = eval(value, env.clone())?;
-    let mut env = env.lock().unwrap();
-    env.set(key, result)?;
+    resolve_lets(set, &result, env.clone())
+}
 
-    Ok(Blad::Unit)
+fn resolve_lets(key: &Blad, value: &Blad, env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
+    match (key, value) {
+        (Blad::Symbol(key), _) => {
+            let mut env = env.lock().unwrap();
+            env.set(key, value.clone())?;
+
+            Ok(Blad::Unit)
+        }
+        (Blad::List(keys), Blad::List(values)) => {
+            if keys.len() != values.len() {
+                return Err(Error::IncorrectVariableDestructuring(
+                    keys.len(),
+                    values.len(),
+                ));
+            }
+
+            for (key, value) in keys.iter().zip(values.iter()) {
+                resolve_lets(key, value, env.clone())?;
+            }
+
+            Ok(Blad::Unit)
+        }
+        _ => Err(Error::IncorrectVariableDeclaration(
+            key.clone(),
+            value.clone(),
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -62,6 +87,36 @@ mod tests {
             ")
             .unwrap(),
             Blad::Literal(Literal::Usize(12))
+        );
+    }
+
+    #[test]
+    fn destructuring() {
+        assert_eq!(
+            run("
+                (do
+                    (let tuple (list (+ 1 2) (+ 10 20)))
+                    (let (x y) tuple)
+                    (+ x y)
+                )
+            ")
+            .unwrap(),
+            Blad::Literal(Literal::Usize(33))
+        );
+    }
+
+    #[test]
+    fn nested_destructuring() {
+        assert_eq!(
+            run("
+                (do
+                    (let nested (list (+ 1 2) (list 10 20)))
+                    (let (x (y z)) nested)
+                    (+ x y z)
+                )
+            ")
+            .unwrap(),
+            Blad::Literal(Literal::Usize(33))
         );
     }
 }
