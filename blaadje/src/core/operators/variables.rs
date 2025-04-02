@@ -11,7 +11,7 @@ pub fn process_let(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, 
     resolve_lets(set, &result, env.clone())
 }
 
-fn resolve_lets(key: &Blad, value: &Blad, env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
+pub fn resolve_lets(key: &Blad, value: &Blad, env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
     match (key, value) {
         (Blad::Symbol(key), _) => {
             let mut env = env.lock().unwrap();

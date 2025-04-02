@@ -1,4 +1,5 @@
-use super::super::{args, eval};
+use super::super::{args, eval, Keyword};
+use super::variables::resolve_lets;
 use crate::{Blad, Environment, Error};
 use std::sync::{Arc, Mutex};
 
@@ -11,41 +12,33 @@ pub fn process_lambda(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Bla
     let closure = Environment::child_from(env.clone());
 
     match params {
-        Blad::Unit => Ok(Blad::Lambda(closure, vec![], Box::new(body.clone()))),
-        Blad::List(p) => {
-            let mut param_strings = vec![];
-
-            for blad in p.into_iter() {
-                if let Blad::Symbol(param) = blad {
-                    param_strings.push(param.clone());
-                } else {
-                    return Err(Error::ExpectedSymbol(blad.clone()));
-                }
-            }
-
-            Ok(Blad::Lambda(closure, param_strings, Box::new(body.clone())))
-        }
+        Blad::Unit | Blad::List(_) | Blad::Symbol(_) => Ok(Blad::Lambda(
+            closure,
+            Box::new(params.clone()),
+            Box::new(body.clone()),
+        )),
         _ => Err(Error::IncorrectLambdaSyntax(Blad::List(list.to_vec()))),
     }
 }
 
 pub fn process_lambda_call(
     closure: &Environment,
-    params: &Vec<String>,
+    params: &Blad,
     body: &Blad,
     list: &[Blad],
     env: Arc<Mutex<Environment>>,
 ) -> Result<Blad, Error> {
-    args(list, params.len())?;
+    let inner_env = Arc::new(Mutex::new(closure.clone()));
 
-    let mut inner_env = closure.clone();
+    let values = {
+        let mut inner = list.to_vec();
+        inner.insert(0, Blad::Keyword(Keyword::List));
+        eval(&Blad::List(inner), env.clone())?
+    };
 
-    for (i, p) in params.iter().enumerate() {
-        let result = eval(&list[i], env.clone())?;
-        inner_env.set(p, result)?;
-    }
+    resolve_lets(params, &values, inner_env.clone())?;
 
-    eval(&body, Arc::new(Mutex::new(inner_env)))
+    eval(&body, inner_env)
 }
 
 #[cfg(test)]
@@ -134,6 +127,20 @@ mod tests {
         assert_eq!(
             run("((fn (x) (+ x 1)) 1)").unwrap(),
             Blad::Literal(Literal::Usize(2)),
+        );
+    }
+
+    #[test]
+    fn destructure() {
+        assert_eq!(
+            run("
+                (do
+                    (let f (fn (x (y z)) (+ x y z)))
+                    (f 10 '(20 30))
+                )
+            ")
+            .unwrap(),
+            Blad::Literal(Literal::Usize(60)),
         );
     }
 }

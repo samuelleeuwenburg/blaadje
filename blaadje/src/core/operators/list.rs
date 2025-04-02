@@ -9,7 +9,11 @@ pub fn process_list(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad,
 
     let result = list
         .iter()
-        .map(|b| eval(b, env.clone()))
+        .map(|b| {
+            let result = eval(b, env.clone());
+            println!("eval: {:?} \n>>>>> {:?}\n", b, result);
+            result
+        })
         .collect::<Result<_, _>>()?;
 
     Ok(Blad::List(result))

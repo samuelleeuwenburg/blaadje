@@ -18,10 +18,10 @@ use screech::Signal;
 pub enum Blad {
     Atom(String),
     Keyword(Keyword),
-    Lambda(Environment, Vec<String>, Box<Blad>),
+    Lambda(Environment, Box<Blad>, Box<Blad>),
     List(Vec<Blad>),
     Literal(Literal),
-    Macro(Vec<String>, Box<Blad>),
+    Macro(Box<Blad>, Box<Blad>),
     Quote(Box<Blad>),
     Screech(Screech),
     Symbol(String),

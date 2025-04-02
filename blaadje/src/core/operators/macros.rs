@@ -1,4 +1,5 @@
 use super::super::{args, eval};
+use super::variables::resolve_lets;
 use crate::{Blad, Environment, Error};
 use std::sync::{Arc, Mutex};
 
@@ -8,44 +9,31 @@ pub fn process_macro(list: &[Blad], _env: Arc<Mutex<Environment>>) -> Result<Bla
     let params = &list[0];
     let body = &list[1];
 
-    match (params, list.len()) {
-        (Blad::List(p), 2) => {
-            let mut param_strings = vec![];
-
-            for blad in p.into_iter() {
-                if let Blad::Symbol(param) = blad {
-                    param_strings.push(param.clone());
-                } else {
-                    return Err(Error::ExpectedSymbol(blad.clone()));
-                }
-            }
-
-            Ok(Blad::Macro(param_strings, Box::new(body.clone())))
-        }
-        (_, 2) => Err(Error::ExpectedList(params.clone())),
+    match params {
+        Blad::Unit | Blad::List(_) | Blad::Symbol(_) => Ok(Blad::Macro(
+            Box::new(params.clone()),
+            Box::new(body.clone()),
+        )),
         _ => Err(Error::IncorrectMacroSyntax(Blad::List(list.to_vec()))),
     }
 }
 
 pub fn expand_macro_call(
-    params: &Vec<String>,
+    params: &Blad,
     body: &Blad,
     list: &[Blad],
     env: Arc<Mutex<Environment>>,
 ) -> Result<Blad, Error> {
-    args(list, params.len())?;
+    let inner_env = Arc::new(Mutex::new(Environment::child_from(env.clone())));
+    let values = Blad::List(list.to_vec());
 
-    let mut inner_env = Environment::child_from(env.clone());
+    resolve_lets(params, &values, inner_env.clone())?;
 
-    for (i, p) in params.iter().enumerate() {
-        inner_env.set(p, list[i].clone())?;
-    }
-
-    eval(&body, Arc::new(Mutex::new(inner_env)))
+    eval(&body, inner_env)
 }
 
 pub fn process_macro_call(
-    params: &Vec<String>,
+    params: &Blad,
     body: &Blad,
     list: &[Blad],
     env: Arc<Mutex<Environment>>,

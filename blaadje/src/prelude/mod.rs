@@ -13,7 +13,7 @@ const PRELUDE: &'static str = "
 
     (let >= (fn (a b) (or (> a b) (= a b))))
 
-    (let empty? (fn (l) (if (= (head l) '()) true false)))
+    (let empty? (fn (l) (= l ())))
 
     (let length (fn (items) (do
         (let f (fn (items index)
@@ -148,6 +148,11 @@ mod tests {
     fn non_empty() {
         assert_eq!(
             run("(empty? '(1 2 3))").unwrap(),
+            Blad::Literal(Literal::Usize(0)),
+        );
+
+        assert_eq!(
+            run("(empty? '(() () ()))").unwrap(),
             Blad::Literal(Literal::Usize(0)),
         );
     }
