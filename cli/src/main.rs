@@ -147,7 +147,7 @@ fn run(code: &str, env: Arc<Mutex<Environment>>) {
 
     // Print
     match output {
-        Ok(v) => println!("\x1b[96m{:?}\x1b[0m", v),
+        Ok(v) => println!("\x1b[96m{}\x1b[0m", v),
         Err(v) => println!("\x1b[91mError: {:?}\x1b[0m", v),
     }
 }

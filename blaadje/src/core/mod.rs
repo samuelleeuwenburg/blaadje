@@ -13,6 +13,8 @@ pub use eval::{args, args_min, eval, eval_nodes};
 use notes::atom_to_pitch;
 pub use parse::parse;
 use screech::Signal;
+use std::convert::Into;
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum Blad {
@@ -93,6 +95,53 @@ impl Blad {
     }
 }
 
+impl fmt::Display for Blad {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::new();
+
+        match self {
+            Blad::Atom(a) => output.push_str(a),
+            Blad::Keyword(a) => output.push_str(&a.to_string()),
+            Blad::List(items) => {
+                output.push('(');
+                for (i, item) in items.iter().enumerate() {
+                    output.push_str(&item.to_string());
+
+                    if i != items.len() - 1 {
+                        output.push(' ');
+                    }
+                }
+
+                output.push(')');
+            }
+            Blad::Literal(a) => output.push_str(&a.to_string()),
+            Blad::Quote(a) => {
+                output.push_str("'");
+                output.push_str(&a.to_string())
+            }
+            Blad::Screech(a) => output.push_str(&a.to_string()),
+            Blad::Symbol(a) => output.push_str(a),
+            Blad::Unit => output.push_str("()"),
+            Blad::Lambda(_, keys, body) => {
+                output.push_str("(fn ");
+                output.push_str(&keys.to_string());
+                output.push(' ');
+                output.push_str(&body.to_string());
+                output.push(')');
+            }
+            Blad::Macro(keys, body) => {
+                output.push_str("(macro ");
+                output.push_str(&keys.to_string());
+                output.push(' ');
+                output.push_str(&body.to_string());
+                output.push(')');
+            }
+        }
+
+        write!(f, "{}", output)
+    }
+}
+
 impl PartialEq for Blad {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -114,6 +163,21 @@ pub enum Literal {
     Usize(usize),
     F32(f32),
     String(String),
+}
+
+impl Literal {
+    pub fn to_string(&self) -> String {
+        match self {
+            Literal::Usize(n) => n.to_string(),
+            Literal::F32(n) => n.to_string(),
+            Literal::String(s) => {
+                let mut output = "\"".to_string();
+                output.push_str(s);
+                output.push('"');
+                output
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -138,8 +202,41 @@ pub enum Keyword {
     String,
 }
 
+impl fmt::Display for Keyword {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = match self {
+            Keyword::Add => "+",
+            Keyword::Subtract => "-",
+            Keyword::LessThan => "<",
+            Keyword::Equal => "=",
+            Keyword::GreaterThan => ">",
+            Keyword::Append => "append",
+            Keyword::Call => "call",
+            Keyword::Cast => "cast",
+            Keyword::Cons => "cons",
+            Keyword::Lambda => "fn",
+            Keyword::Head => "head",
+            Keyword::If => "if",
+            Keyword::Let => "let",
+            Keyword::List => "list",
+            Keyword::Macro => "macro",
+            Keyword::Samples => "samples",
+            Keyword::String => "string",
+            Keyword::Tail => "tail",
+        };
+
+        write!(f, "{}", string)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Screech {
     Module(usize),
     Signal(Signal),
+}
+
+impl fmt::Display for Screech {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
