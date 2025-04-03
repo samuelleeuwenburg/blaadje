@@ -1,4 +1,4 @@
-use crate::{eval, parse, Environment, Error};
+use crate::{eval_nodes, parse, Environment, Error};
 use std::sync::{Arc, Mutex};
 
 const PRELUDE: &'static str = "
@@ -15,6 +15,19 @@ const PRELUDE: &'static str = "
 
     (let empty? (fn (l) (= l ())))
 
+    (let fold (fn (items initial_value function)
+        (if (empty? items)
+            initial_value
+            (fold
+                (tail items)
+                (function initial_value (head items))
+                function
+            )
+        )
+    ))
+
+    (let do (fn args (fold args '() (fn (xs x) x))))
+
     (let length (fn (items) (do
         (let f (fn (items index)
             (if (empty? items) index (f (tail items) (+ index 1)))
@@ -29,16 +42,6 @@ const PRELUDE: &'static str = "
             (nth (tail items) (- index 1))
         )
     ))
-
-    (let fold (fn (items initial_value function) (do
-        (if (empty? items)
-            initial_value
-            (do
-                (let result (function initial_value (head items)))
-                (fold (tail items) result function)
-            )
-        )
-    )))
 
     (let map (fn (items f)
         (fold items '() (fn (xs x)
@@ -126,8 +129,8 @@ const SCREECH_PRELUDE: &'static str = "
 ";
 
 pub fn set_prelude(env: Arc<Mutex<Environment>>) -> Result<Arc<Mutex<Environment>>, Error> {
-    eval(&parse(PRELUDE)?, env.clone())?;
-    eval(&parse(SCREECH_PRELUDE)?, env.clone())?;
+    eval_nodes(&parse(PRELUDE)?, env.clone())?;
+    eval_nodes(&parse(SCREECH_PRELUDE)?, env.clone())?;
 
     Ok(env)
 }
@@ -281,5 +284,25 @@ mod tests {
                 ]),
             ])
         );
+    }
+
+    #[test]
+    fn do_test() {
+        assert_eq!(
+            run("
+                (do
+                    (let x 2)
+                    (let y 4)
+                    (+ x y)
+                )
+            ")
+            .unwrap(),
+            Blad::Literal(Literal::Usize(6))
+        );
+    }
+
+    #[test]
+    fn do_empty() {
+        assert_eq!(run("(do)").unwrap(), Blad::Unit);
     }
 }

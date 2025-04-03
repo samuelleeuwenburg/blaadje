@@ -9,21 +9,10 @@ pub fn process_list(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad,
 
     let result = list
         .iter()
-        .map(|b| {
-            let result = eval(b, env.clone());
-            println!("eval: {:?} \n>>>>> {:?}\n", b, result);
-            result
-        })
+        .map(|b| eval(b, env.clone()))
         .collect::<Result<_, _>>()?;
 
     Ok(Blad::List(result))
-}
-
-pub fn process_do(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
-    match process_list(list, env)? {
-        Blad::List(b) => Ok(b.last().unwrap_or(&Blad::Unit).clone()),
-        blad => Ok(blad),
-    }
 }
 
 pub fn process_head(list: &[Blad], env: Arc<Mutex<Environment>>) -> Result<Blad, Error> {
@@ -117,26 +106,6 @@ mod tests {
     #[test]
     fn list_empty() {
         assert_eq!(run("(list)").unwrap(), Blad::Unit);
-    }
-
-    #[test]
-    fn do_test() {
-        assert_eq!(
-            run("
-                (do
-                    (let x 2)
-                    (let y 4)
-                    (+ x y)
-                )
-            ")
-            .unwrap(),
-            Blad::Literal(Literal::Usize(6))
-        );
-    }
-
-    #[test]
-    fn do_empty() {
-        assert_eq!(run("(do)").unwrap(), Blad::Unit);
     }
 
     #[test]

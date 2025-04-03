@@ -1,13 +1,13 @@
 use super::{Blad, Error, Keyword, Literal};
 
-pub fn parse(input: &str) -> Result<Blad, Error> {
+pub fn parse(input: &str) -> Result<Vec<Blad>, Error> {
     let tokens = tokenize(input);
-    let mut program = vec![Blad::Keyword(Keyword::Do)];
+    let mut nodes = vec![];
     let mut index = 0;
 
     loop {
         let (ast, i) = parse_tokens(&tokens[index..tokens.len()])?;
-        program.push(ast);
+        nodes.push(ast);
 
         index += i;
         if index == tokens.len() {
@@ -15,7 +15,7 @@ pub fn parse(input: &str) -> Result<Blad, Error> {
         }
     }
 
-    Ok(Blad::List(program))
+    Ok(nodes)
 }
 
 fn tokenize(input: &str) -> Vec<String> {
@@ -77,7 +77,6 @@ fn parse_token(token: &str) -> Result<Blad, Error> {
         "call" => Ok(Blad::Keyword(Keyword::Call)),
         "cast" => Ok(Blad::Keyword(Keyword::Cast)),
         "cons" => Ok(Blad::Keyword(Keyword::Cons)),
-        "do" => Ok(Blad::Keyword(Keyword::Do)),
         "fn" => Ok(Blad::Keyword(Keyword::Lambda)),
         "head" => Ok(Blad::Keyword(Keyword::Head)),
         "if" => Ok(Blad::Keyword(Keyword::If)),

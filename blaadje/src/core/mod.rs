@@ -9,7 +9,7 @@ mod parse;
 pub use channel::Channel;
 pub use env::Environment;
 pub use error::Error;
-pub use eval::{args, args_min, eval};
+pub use eval::{args, args_min, eval, eval_nodes};
 use notes::atom_to_pitch;
 pub use parse::parse;
 use screech::Signal;
@@ -121,7 +121,6 @@ pub enum Keyword {
     Add,
     Append,
     Cons,
-    Do,
     Equal,
     GreaterThan,
     Head,
