@@ -1,6 +1,7 @@
 use super::modules::{Clock, Filter, Midi, Oscillator, Sample, Sequencer, Vca};
+use super::System;
 use crate::core::{args, args_min};
-use crate::{Blad, Channel, Error, Screech};
+use crate::{Blad, Channel, Error, Literal, Screech};
 use screech::{Module, Patchbay, Processor, Signal};
 use screech_macro::modularize;
 use std::collections::HashMap;
@@ -62,12 +63,14 @@ pub struct Engine<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_
     outputs_left: Vec<Signal>,
     outputs_right: Vec<Signal>,
     midi_buffer: Arc<Mutex<Vec<u32>>>,
+    system: Box<dyn System>,
+    channels: Vec<Arc<Mutex<Channel>>>,
 }
 
 impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usize>
     Engine<SAMPLE_RATE, NUM_MODULES, NUM_PATCHES>
 {
-    pub fn new() -> Self {
+    pub fn new(system: Box<dyn System>, channels: Vec<Arc<Mutex<Channel>>>) -> Self {
         Self {
             module_ids: HashMap::new(),
             patchbay: Patchbay::new(),
@@ -75,6 +78,8 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             outputs_left: Vec::new(),
             outputs_right: Vec::new(),
             midi_buffer: Arc::new(Mutex::new(Vec::new())),
+            system,
+            channels,
         }
     }
 
@@ -99,6 +104,89 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
         let operator = &list[0].get_atom()?;
 
         match operator.as_ref() {
+            ":system" => {
+                args_min(&list, 2)?;
+                let atom = &list[1].get_atom()?;
+
+                match atom.as_ref() {
+                    ":start_audio" => {
+                        args(&list, 7)?;
+                        let host_id = &list[2].get_string()?;
+                        let device_id = &list[3].get_string()?;
+                        let buffer_size = &list[4].get_usize()?;
+                        let sample_rate = &list[5].get_usize()?;
+                        let bit_depth = &list[6].get_usize()?;
+
+                        self.system
+                            .start_audio(host_id, device_id, *buffer_size, *sample_rate, *bit_depth)
+                            .unwrap();
+
+                        Ok(Blad::Unit)
+                    }
+                    ":stop_audio" => {
+                        self.system.stop_audio();
+
+                        Ok(Blad::Unit)
+                    }
+                    ":devices" => {
+                        args(&list, 3)?;
+                        let host_id = &list[2].get_string()?;
+
+                        let devices: Vec<Blad> = self
+                            .system
+                            .get_devices(host_id)
+                            .into_iter()
+                            .map(|s| Blad::Literal(Literal::String(s)))
+                            .collect();
+
+                        Ok(Blad::List(devices))
+                    }
+
+                    ":default_device" => {
+                        args(&list, 3)?;
+                        let host_id = &list[2].get_string()?;
+
+                        let devices = self.system.get_default_device(host_id);
+                        Ok(Blad::Literal(Literal::String(devices)))
+                    }
+                    ":hosts" => {
+                        let hosts: Vec<Blad> = self
+                            .system
+                            .get_hosts()
+                            .into_iter()
+                            .map(|s| Blad::Literal(Literal::String(s)))
+                            .collect();
+
+                        Ok(Blad::List(hosts))
+                    }
+                    ":default_host" => {
+                        let host = self.system.get_default_host();
+
+                        Ok(Blad::Literal(Literal::String(host)))
+                    }
+                    ":get_midi_inputs" => {
+                        let hosts: Vec<Blad> = self
+                            .system
+                            .get_midi_inputs()
+                            .into_iter()
+                            .map(|s| Blad::Literal(Literal::String(s)))
+                            .collect();
+
+                        Ok(Blad::List(hosts))
+                    }
+                    ":get_midi_outputs" => {
+                        let hosts: Vec<Blad> = self
+                            .system
+                            .get_midi_outputs()
+                            .into_iter()
+                            .map(|s| Blad::Literal(Literal::String(s)))
+                            .collect();
+
+                        Ok(Blad::List(hosts))
+                    }
+                    _ => Err(Error::UndefinedOperator(atom.to_string())),
+                }
+            }
             ":midi" => {
                 args(&list, 2)?;
                 let message = &list[1].get_usize()?;
@@ -262,6 +350,20 @@ impl<const SAMPLE_RATE: usize, const NUM_MODULES: usize, const NUM_PATCHES: usiz
             Some(Modules::Sequencer(_)) => ":sequencer",
             Some(Modules::Vca(_)) => ":vca",
             None => ":none",
+        }
+    }
+
+    pub fn process(&mut self) {
+        loop {
+            let channels = self.channels.clone();
+            for channel in channels {
+                self.process_channel(channel.clone());
+            }
+
+            if !self.system.buffer_full() {
+                let (l, _) = self.next_samples();
+                self.system.push_sample(l);
+            }
         }
     }
 

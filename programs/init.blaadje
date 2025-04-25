@@ -1,0 +1,14 @@
+(let host (call '(:system :default_host)))
+(let device (call (list :system :default_device host)))
+(call (list :system :start_audio host device 1024 48000 16))
+
+(let x8 (Clock.new "x8"))
+(set x8 :bpm 340.0)
+
+(let kick (Sample.new "kick"))
+(set kick :samples (samples "./samples/snare.wav"))
+(set kick :trigger (get x8 :output))
+
+
+(head (call (list :system :get_midi_outputs)))
+

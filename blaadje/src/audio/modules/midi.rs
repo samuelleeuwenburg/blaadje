@@ -1,6 +1,6 @@
 use crate::core::args_min;
 use crate::core::notes::midi_to_pitch;
-use crate::{Blad, Error, Screech};
+use crate::{Blad, Error, Literal, Screech};
 use screech::{Module, PatchPoint, Patchbay};
 use std::convert::From;
 use std::sync::{Arc, Mutex};
@@ -10,7 +10,7 @@ pub enum MidiMessage {
     NoteOn(u8, u8, u8),
     NoteOff(u8, u8, u8),
     TimingClock,
-    Unknown(u32),
+    Unknown,
 }
 
 impl From<u32> for MidiMessage {
@@ -24,7 +24,7 @@ impl From<u32> for MidiMessage {
             (0x8, _) => MidiMessage::NoteOff(channel, lower, upper),
             (0x9, _) => MidiMessage::NoteOn(channel, lower, upper),
             (0xf, 0x8) => MidiMessage::TimingClock,
-            _ => MidiMessage::Unknown(message),
+            _ => MidiMessage::Unknown,
         }
     }
 }
@@ -49,6 +49,7 @@ pub struct Midi {
     voices: Vec<Voice>,
     clock: PatchPoint,
     buffer: Arc<Mutex<Vec<u32>>>,
+    channel: u8,
 }
 
 impl Midi {
@@ -68,10 +69,27 @@ impl Midi {
             voices,
             clock,
             buffer,
+            channel: 0,
         }
     }
 
-    pub fn set(&mut self, _list: &[Blad]) -> Result<Blad, Error> {
+    pub fn set(&mut self, list: &[Blad]) -> Result<Blad, Error> {
+        args_min(list, 1)?;
+
+        for b in list.iter() {
+            let pair = b.get_list()?;
+            let property = pair[0].get_atom()?;
+            let value = &pair[1];
+
+            match (property, value) {
+                (":channel", Blad::Literal(Literal::Usize(channel))) => {
+                    self.channel = *channel as u8;
+                    Ok(Blad::Unit)
+                }
+                (a, b) => Err(Error::IncorrectPropertyPair(a.to_string(), b.clone())),
+            }?;
+        }
+
         Ok(Blad::Unit)
     }
 
@@ -118,8 +136,8 @@ impl<const SAMPLE_RATE: usize> Module<SAMPLE_RATE> for Midi {
         for message in messages.iter() {
             match MidiMessage::from(*message) {
                 MidiMessage::TimingClock => patchbay.set(&mut self.clock, 1.0),
-                MidiMessage::NoteOn(_, note, _velocity) => {
-                    for (i, v) in self.voices.iter_mut().enumerate() {
+                MidiMessage::NoteOn(channel, note, _velocity) if channel == self.channel => {
+                    for v in self.voices.iter_mut() {
                         if let None = v.active_note {
                             patchbay.set(&mut v.frequency, midi_to_pitch(note).unwrap_or(0.0));
                             patchbay.set(&mut v.gate, 1.0);
@@ -128,8 +146,8 @@ impl<const SAMPLE_RATE: usize> Module<SAMPLE_RATE> for Midi {
                         }
                     }
                 }
-                MidiMessage::NoteOff(_, note, _velocity) => {
-                    for (i, v) in self.voices.iter_mut().enumerate() {
+                MidiMessage::NoteOff(channel, note, _velocity) if channel == self.channel => {
+                    for v in self.voices.iter_mut() {
                         if v.active_note == Some(note) {
                             patchbay.set(&mut v.frequency, midi_to_pitch(note).unwrap_or(0.0));
                             patchbay.set(&mut v.gate, 0.0);

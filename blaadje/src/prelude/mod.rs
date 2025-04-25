@@ -56,9 +56,7 @@ const PRELUDE: &'static str = "
     ))
 
     (let enumerate (fn (items) (do
-        (let result (fold items '( () 0) (fn (acc item) (do
-            (let items (nth acc 0))
-            (let index (nth acc 1))
+        (let result (fold items '( () 0) (fn ((items index) item) (do
             (list
                 (append (list index item) items)
                 (+ index 1)

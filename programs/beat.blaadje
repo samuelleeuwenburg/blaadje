@@ -2,9 +2,7 @@
 (set clock :bpm 340.0)
 
 (let grid (fn (id trigger rows)
-    (map rows (fn (row) (do
-        (let sample_path (nth row 0))
-        (let triggers (nth row 1))
+    (map rows (fn ((sample_path  triggers)) (do
         (let row_id (append id sample_path))
 
         (let seq (Sequencer.new (append row_id "-seq")))
@@ -31,8 +29,8 @@
 
 (let s1 (Module.new Sequencer.new "s1" (list
     (list :trigger (get clock :output))
-    (list :frequencies '(:c2  :e2  :b2  :e2  :c3  :b3 ))
-    (list :triggers    '(1    1    1    1    1    1   ))
+    (list :frequencies '(:c2  :d2  :b2  :e2  :c3  :b3 ))
+    (list :triggers    '(1    1    1    1    0    1   ))
 )))
 
 (let o1 (Module.new Osc.new "o1" (list
@@ -49,7 +47,7 @@
 
 (let f (Module.new Filter.new "f" (list
     (list :frequency (offset (scale (get lfo :output) 500.0) 700.0))
-    (list :resonance 3.0)
+    (list :resonance 1.0)
     (list :input (get o1 :output))
 )))
 

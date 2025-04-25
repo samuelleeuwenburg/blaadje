@@ -1,20 +1,12 @@
 (let midi (Midi.new "midi"))
+(set midi :channel 1)
 
 (let voices (map (enumerate (get midi :voices))
-    (fn (tuple) (do
-        (:TODO)
-        (let (index (frequency gate)) tuple)
-
+    (fn ((index (frequency gate))) (do
         (let osc (Osc.new (append "osc" (string index))))
         (let vca (Vca.new (append "vca" (string index))))
 
-        (let waveshape (if (< index 5)
-            (if (< index 2)
-                :saw
-                :pulse
-            )
-            :triangle
-        ))
+        (let waveshape :triangle)
 
         (set osc :waveshape waveshape)
         (set osc :frequency frequency)

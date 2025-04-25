@@ -1,16 +1,11 @@
-#![allow(unreachable_code)]
-mod audio;
+mod system;
 
-use audio::init_stream;
-use blaadje::{run_with_env, set_prelude, Blad, Channel, Engine, Environment, Literal};
+use blaadje::{run_with_env, set_prelude, Engine, Environment};
 use clap::{Arg, Command};
-use midir::{Ignore, MidiInput, MidiInputConnection};
 use notify::{
     event::{AccessKind, AccessMode},
     recommended_watcher, Event, EventKind, RecursiveMode, Result as NotifyResult, Watcher,
 };
-use ringbuf::traits::Producer;
-use ringbuf::{storage::Heap, wrap::caching::Caching, SharedRb};
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -19,6 +14,7 @@ use std::path::Path;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use system::Sys;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let matches = Command::new("blaadje-cli")
@@ -51,8 +47,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let env = Arc::new(Mutex::new(env));
     set_prelude(env.clone()).expect("Unable to set prelude");
 
-    let midi_channel = Arc::new(Mutex::new(Channel::new()));
-    let midi_in = midi(midi_channel.clone())?;
+    thread::spawn(|| {
+        let sys = Box::new(Sys::new());
+        let channels = vec![channel];
+        let mut engine = Engine::<44_100, 128, 128>::new(sys, channels);
+        engine.process();
+    });
 
     match matches.subcommand() {
         Some(("run", matches)) => {
@@ -60,14 +60,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             run_file(env.clone(), file)
         }
 
+        Some(("repl", matches)) => {
+            if let Some(file) = matches.get_one::<String>("file") {
+                run_file(env.clone(), file)?;
+            }
+
+            repl(env)
+        }
+
         Some(("live", matches)) => {
             let file = matches.get_one::<String>("file").unwrap();
-            let (_stream, producer) = init_stream()?;
-
-            thread::spawn(|| {
-                let channels = vec![channel, midi_channel];
-                let _ = audio(producer, &channels);
-            });
 
             {
                 env.lock().unwrap().live_mode();
@@ -97,21 +99,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             Ok(())
-        }
-
-        Some(("repl", matches)) => {
-            let (_stream, producer) = init_stream()?;
-
-            thread::spawn(|| {
-                let channels = vec![channel];
-                let _ = audio(producer, &channels);
-            });
-
-            if let Some(file) = matches.get_one::<String>("file") {
-                run_file(env.clone(), file)?;
-            }
-
-            repl(env)
         }
         _ => unreachable!(),
     }
@@ -150,59 +137,4 @@ fn run(code: &str, env: Arc<Mutex<Environment>>) {
         Ok(v) => println!("\x1b[96m{}\x1b[0m", v),
         Err(v) => println!("\x1b[91mError: {:?}\x1b[0m", v),
     }
-}
-
-fn midi(channel: Arc<Mutex<Channel>>) -> Result<MidiInputConnection<()>, Box<dyn Error>> {
-    let mut midi_in = MidiInput::new("midir reading input")?;
-    midi_in.ignore(Ignore::None);
-    let in_ports = midi_in.ports();
-    let in_port = in_ports.get(1).unwrap();
-    let midi_in = midi_in.connect(
-        in_port,
-        "midir-read-input",
-        move |_stamp, message, _| {
-            let mut midi_message = 0_usize;
-
-            for (i, byte) in message.iter().enumerate() {
-                midi_message += (*byte as usize) << i * 8;
-            }
-
-            let mut channel = channel.lock().unwrap();
-
-            channel.send(Blad::List(vec![
-                Blad::Atom(":midi".to_string()),
-                Blad::Literal(Literal::Usize(midi_message)),
-            ]));
-        },
-        (),
-    )?;
-
-    Ok(midi_in)
-}
-
-fn audio(
-    mut producer: Caching<Arc<SharedRb<Heap<f32>>>, true, false>,
-    channels: &[Arc<Mutex<Channel>>],
-) -> Result<(), Box<dyn Error>> {
-    let mut engine = Engine::<44_100, 128, 128>::new();
-    let mut count = 0;
-    let mut sample = 0.0;
-
-    loop {
-        for channel in channels.iter() {
-            engine.process_channel(channel.clone());
-        }
-
-        // Alternate between channels
-        if let Ok(_) = producer.try_push(sample) {
-            let (l, r) = engine.next_samples();
-            sample = if count == 0 { l } else { r };
-            count += 1;
-            if count > 1 {
-                count = 0;
-            }
-        }
-    }
-
-    Ok(())
 }

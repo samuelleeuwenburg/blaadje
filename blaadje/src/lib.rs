@@ -4,7 +4,7 @@ mod audio;
 mod core;
 mod prelude;
 
-pub use audio::Engine;
+pub use audio::{Engine, System};
 pub use core::{eval, eval_nodes, parse, Blad, Channel, Environment, Error, Literal, Screech};
 pub use prelude::set_prelude;
 
